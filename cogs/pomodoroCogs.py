@@ -1,7 +1,5 @@
 from discord.ext import commands, tasks
-from discord.ext.commands import has_permissions
 import cogs.colourEmbed as functions
-import traceback
 import sqlite3
 import datetime
 import discord
