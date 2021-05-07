@@ -86,6 +86,8 @@ class adminCommands(commands.Cog, name="🛠️ Admin Commands"):
 
         embed = discord.Embed(title=f"{ctx.guild.name}'s Blacklisted Focus Channels List", description=description)
         await ctx.send(embed=embed)
+
+
     @commands.command(
         description=f"focuschannel [channel mention]**\n\nToggles a channel's focus mode settings. Requires Administrator Permission.")
     @commands.cooldown(1, 5, commands.BucketType.user)

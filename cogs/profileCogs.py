@@ -57,7 +57,7 @@ class profileCogs(commands.Cog, name="📑 Pomodoro & Focus Profile"):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(description="lb**\n\nShows the leaderboard for the longest focus mode and pomodoro completion users!")
+    @commands.command(description="lb**\n\nShows the leaderboard for the longest Focus Mode and Pomodoro completion users!")
     @commands.cooldown(1, 5, commands.BucketType.user)
     async def lb(self, ctx):
 
@@ -107,7 +107,7 @@ class profileCogs(commands.Cog, name="📑 Pomodoro & Focus Profile"):
 
         await ctx.send(embed=embed)
 
-    @commands.command(description="p [user mention (optional)]**\n\nShows a user's (or your own) profile.", aliases=['p'])
+    @commands.command(description="p [user mention (optional)]**\n\nShows a user's (or your own) Pomodoro Profile.", aliases=['p'])
     @commands.cooldown(1, 5, commands.BucketType.user)
     async def profile(self, ctx, user: discord.Member = None):
 

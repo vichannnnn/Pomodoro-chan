@@ -120,12 +120,10 @@ class pomodoroCogs(commands.Cog, name="🍅 Pomodoro"):
                 conn.commit()
 
 
-
     @pomodoroHandler.before_loop
     async def before_status(self):
         print("Waiting to handle Pomodoro Cycles...")
         await self.bot.wait_until_ready()
-
 
     @commands.command(description=f"pomodoro**\n\nStarts a Pomodoro Cycle or ends a current cycle.")
     @commands.cooldown(1, 5, commands.BucketType.user)
