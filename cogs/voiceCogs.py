@@ -5,6 +5,8 @@ import random
 import sqlite3
 import cogs.colourEmbed as functions
 import traceback
+import re
+
 
 conn = sqlite3.connect('bot.db', timeout=5.0)
 c = conn.cursor()
@@ -119,9 +121,12 @@ class voiceCogs(commands.Cog, name='🎙️ Study Rooms'):
                                               (ctx.author.id,))]
 
                 voiceOverwrites = {
-                    ctx.author: discord.PermissionOverwrite(move_members=True)
+                    ctx.author: discord.PermissionOverwrite(move_members=True),
+                    ctx.guild.get_role(role_id=566986562525724692): discord.PermissionOverwrite(move_members=True)
                 }
                 textOverwrites = {
+                    ctx.author: discord.PermissionOverwrite(view_channel=True),
+                    ctx.guild.get_role(role_id=566986562525724692): discord.PermissionOverwrite(view_channel=True),
                     ctx.guild.default_role: discord.PermissionOverwrite(view_channel=False)
                 }
 
@@ -151,7 +156,8 @@ class voiceCogs(commands.Cog, name='🎙️ Study Rooms'):
 
                 voiceOverwrites = {
                     ctx.author: discord.PermissionOverwrite(move_members=True),
-                    user: discord.PermissionOverwrite(move_members=False)
+                    user: discord.PermissionOverwrite(move_members=False),
+                    ctx.guild.get_role(role_id=566986562525724692): discord.PermissionOverwrite(move_members=True),
                 }
 
                 if whitelistedUsers:
@@ -167,6 +173,9 @@ class voiceCogs(commands.Cog, name='🎙️ Study Rooms'):
     @commands.command(description="setlimit [user limit]**\n\nCustomize the user limit of your study room. Type 0 for unlimited.")
     @commands.cooldown(1, 5, commands.BucketType.user)
     async def setlimit(self, ctx, limit: int):
+
+        if limit < 0 or limit > 99:
+            return await functions.errorEmbedTemplate(ctx, f"User Limit can only be between 0 to 99!", ctx.author)
 
         c.execute('UPDATE userProfile SET podLimit = ? WHERE user_id = ? ', (limit, ctx.author.id))
         conn.commit()
@@ -184,8 +193,11 @@ class voiceCogs(commands.Cog, name='🎙️ Study Rooms'):
     @commands.cooldown(1, 5, commands.BucketType.user)
     async def setroomname(self, ctx, *, name):
 
-        if len(name) > 60:
-            return await functions.errorEmbedTemplate(ctx, f"Please reduce the length of your room name to less than 60 characters.", ctx.author)
+        if len(name) > 30:
+            return await functions.errorEmbedTemplate(ctx, f"Please reduce the length of your room name to less than 30 characters.", ctx.author)
+
+        if not re.match("^[a-zA-Z0-9' ]*$", name):
+            return await functions.errorEmbedTemplate(ctx, f"Only alphanumeric letters and `'` are allowed!", ctx.author)
 
         c.execute('UPDATE userProfile SET roomName = ? WHERE user_id = ?', (name, ctx.author.id))
         conn.commit()
@@ -213,9 +225,25 @@ class voiceCogs(commands.Cog, name='🎙️ Study Rooms'):
                                   (member.guild.id,))]
 
         if after.channel and after.channel.id in userChannelList:
+            c.execute('SELECT user_id FROM userProfile WHERE currentVoice = ? ', (after.channel.id,))
+            result = c.fetchall()[0][0]
+
+            whitelistedUsers = [u[0] for u in
+                                c.execute('SELECT whitelistedUser FROM userWhitelist WHERE user_id = ? ',
+                                          (result,))]
+
             textOverwrites = {
-                member: discord.PermissionOverwrite(view_channel=True)
+                after.channel.guild.get_member(result): discord.PermissionOverwrite(view_channel=True),
+                member: discord.PermissionOverwrite(view_channel=True),
+                after.channel.guild.get_role(role_id=566986562525724692): discord.PermissionOverwrite(
+                    view_channel=True),
+                after.channel.guild.default_role: discord.PermissionOverwrite(view_channel=False)
             }
+
+            if whitelistedUsers:
+                for user in whitelistedUsers:
+                    textOverwrites[after.channel.guild.get_member(user)] = discord.PermissionOverwrite(
+                        view_channel=True)
 
             textID = [r[0] for r in c.execute('SELECT textID FROM textList WHERE voiceID = ? ', (after.channel.id, ))][0]
             textObject = self.bot.get_channel(textID)
@@ -229,13 +257,26 @@ class voiceCogs(commands.Cog, name='🎙️ Study Rooms'):
             result = c.fetchall()[0][0]
 
             if result:
-                if result == member.id:
+                whitelistedUsers = [u[0] for u in
+                                    c.execute('SELECT whitelistedUser FROM userWhitelist WHERE user_id = ? ',
+                                              (result,))]
+
+                if result == member.id or result in whitelistedUsers:
                     pass
 
                 else:
                     textOverwrites = {
-                        member: discord.PermissionOverwrite(view_channel=False)
+                        before.channel.guild.get_member(result): discord.PermissionOverwrite(view_channel=True),
+                        member: discord.PermissionOverwrite(view_channel=False),
+                        before.channel.guild.default_role: discord.PermissionOverwrite(view_channel=False),
+                        before.channel.guild.get_role(role_id=566986562525724692): discord.PermissionOverwrite(
+                            view_channel=True)
                     }
+
+                    if whitelistedUsers:
+                        for user in whitelistedUsers:
+                            textOverwrites[after.channel.guild.get_member(user)] = discord.PermissionOverwrite(
+                                view_channel=True)
 
                     textID = [r[0] for r in c.execute('SELECT textID FROM textList WHERE voiceID = ? ', (before.channel.id,))][0]
                     textObject = self.bot.get_channel(textID)
@@ -255,8 +296,9 @@ class voiceCogs(commands.Cog, name='🎙️ Study Rooms'):
                           (0, 0, before.channel.id))
                 conn.commit()
 
-        if after.channel == joinHereChannel: # Creates a new study room
+        #-------------------------------------------------------------------------------------------------
 
+        if after.channel == joinHereChannel: # Creates a new study room
             # Check if they have an existing room
             c.execute('SELECT currentVoice FROM userProfile WHERE user_id = ?', (member.id,))
             result = c.fetchall()
@@ -269,11 +311,14 @@ class voiceCogs(commands.Cog, name='🎙️ Study Rooms'):
             whitelistedUsers = [u[0] for u in c.execute('SELECT whitelistedUser FROM userWhitelist WHERE user_id = ? ', (member.id, ))]
 
             voiceOverwrites = {
-                member: discord.PermissionOverwrite(move_members=True)
+                member: discord.PermissionOverwrite(move_members=True),
+                after.channel.guild.get_role(role_id=566986562525724692): discord.PermissionOverwrite(move_members=True)
             }
             textOverwrites = {
                 member: discord.PermissionOverwrite(view_channel=True),
-                after.channel.guild.default_role: discord.PermissionOverwrite(view_channel=False)
+                after.channel.guild.default_role: discord.PermissionOverwrite(view_channel=False),
+                after.channel.guild.get_role(role_id=566986562525724692): discord.PermissionOverwrite(
+                    view_channel=True),
             }
 
             if whitelistedUsers:
