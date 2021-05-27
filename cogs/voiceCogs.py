@@ -275,7 +275,7 @@ class voiceCogs(commands.Cog, name='🎙️ Study Rooms'):
 
                     if whitelistedUsers:
                         for user in whitelistedUsers:
-                            textOverwrites[after.channel.guild.get_member(user)] = discord.PermissionOverwrite(
+                            textOverwrites[before.channel.guild.get_member(user)] = discord.PermissionOverwrite(
                                 view_channel=True)
 
                     textID = [r[0] for r in c.execute('SELECT textID FROM textList WHERE voiceID = ? ', (before.channel.id,))][0]
