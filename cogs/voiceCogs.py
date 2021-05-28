@@ -121,10 +121,12 @@ class voiceCogs(commands.Cog, name='🎙️ Study Rooms'):
                                               (ctx.author.id,))]
 
                 voiceOverwrites = {
+                    user: discord.PermissionOverwrite(move_members=True),
                     ctx.author: discord.PermissionOverwrite(move_members=True),
                     ctx.guild.get_role(role_id=566986562525724692): discord.PermissionOverwrite(move_members=True)
                 }
                 textOverwrites = {
+                    user: discord.PermissionOverwrite(view_channel=True),
                     ctx.author: discord.PermissionOverwrite(view_channel=True),
                     ctx.guild.get_role(role_id=566986562525724692): discord.PermissionOverwrite(view_channel=True),
                     ctx.guild.default_role: discord.PermissionOverwrite(view_channel=False)
@@ -138,7 +140,7 @@ class voiceCogs(commands.Cog, name='🎙️ Study Rooms'):
                             view_channel=True)
 
                 voiceObject = self.bot.get_channel(currentVoice)
-                await voiceObject.edit(noverwrites=voiceOverwrites)
+                await voiceObject.edit(overwrites=voiceOverwrites)
                 textObject = self.bot.get_channel(currentText)
                 await textObject.edit(overwrites=textOverwrites)
             await functions.successEmbedTemplate(ctx, f"Successfully whitelisted {user.mention}. They are now able to join your Study Room freely regardless of room user limit.", ctx.author)
