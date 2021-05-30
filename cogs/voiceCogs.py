@@ -251,7 +251,7 @@ class voiceCogs(commands.Cog, name='🎙️ Study Rooms'):
 
             if whitelistedUsers:
                 for user in whitelistedUsers:
-                    if before.channel.guild.get_member(user):
+                    if after.channel.guild.get_member(user):
                         textOverwrites[after.channel.guild.get_member(user)] = discord.PermissionOverwrite(
                             view_channel=True)
 
@@ -285,12 +285,12 @@ class voiceCogs(commands.Cog, name='🎙️ Study Rooms'):
                         member: discord.PermissionOverwrite(move_members=True),
                     }
 
-                    if after.channel.guild.get_role(role_id=566986562525724692):
+                    if before.channel.guild.get_role(role_id=566986562525724692):
                         voiceOverwrites[
-                            after.channel.guild.get_role(role_id=566986562525724692)] = discord.PermissionOverwrite(
+                            before.channel.guild.get_role(role_id=566986562525724692)] = discord.PermissionOverwrite(
                             view_channel=True)
                         textOverwrites[
-                            after.channel.guild.get_role(role_id=566986562525724692)] = discord.PermissionOverwrite(
+                            before.channel.guild.get_role(role_id=566986562525724692)] = discord.PermissionOverwrite(
                             view_channel=True)
 
                     for member in before.channel.members:
@@ -301,7 +301,7 @@ class voiceCogs(commands.Cog, name='🎙️ Study Rooms'):
                             if before.channel.guild.get_member(user):
                                 textOverwrites[before.channel.guild.get_member(user)] = discord.PermissionOverwrite(
                                     view_channel=True)
-                                voiceOverwrites[after.channel.guild.get_member(user)] = discord.PermissionOverwrite(
+                                voiceOverwrites[before.channel.guild.get_member(user)] = discord.PermissionOverwrite(
                                     move_members=True)
 
                     textID = [r[0] for r in c.execute('SELECT textID FROM textList WHERE voiceID = ? ', (before.channel.id,))][0]
