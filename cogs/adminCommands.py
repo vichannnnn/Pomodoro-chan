@@ -83,6 +83,7 @@ class adminCommands(commands.Cog, name="🛠️ Admin Commands"):
                                                  ctx.message.author)
 
         except sqlite3.IntegrityError:
+            await joinHereChannel.delete()
             await functions.errorEmbedTemplate(ctx,
                                                f"There is already a voice system enabled in your server! Please make sure to run `voicesystemdelete` before running this command again!",
                                                ctx.message.author)

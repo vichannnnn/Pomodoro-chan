@@ -84,12 +84,11 @@ class voiceCogs(commands.Cog, name='🎙️ Study Rooms'):
     @commands.cooldown(1, 5, commands.BucketType.user)
     async def roomreset(self, ctx):
 
-        textChannel = [r[0] for r in c.execute('SELECT textID FROM textList WHERE user_id = ?', (ctx.author.id,))][
-            0]
-        textObject = self.bot.get_channel(textChannel)
+        voiceChannel, textChannel = [[r[0], r[1]] for r in
+                              c.execute('SELECT currentVoice, currentText FROM userProfile WHERE user_id = ? ',
+                                        (ctx.author.id,))][0]
 
-        voiceChannel = [r[0] for r in c.execute('SELECT voiceID FROM voiceList WHERE user_id = ?', (ctx.author.id,))][
-            0]
+        textObject = self.bot.get_channel(textChannel)
         voiceObject = self.bot.get_channel(voiceChannel)
 
         if not voiceObject and not textObject:
@@ -199,7 +198,7 @@ class voiceCogs(commands.Cog, name='🎙️ Study Rooms'):
             return await functions.errorEmbedTemplate(ctx, f"Please reduce the length of your room name to less than 30 characters.", ctx.author)
 
         if not re.match("^[a-zA-Z0-9' ]*$", name):
-            return await functions.errorEmbedTemplate(ctx, f"Only alphanumeric letters and `'` are allowed!", ctx.author)
+            return await functions.errorEmbedTemplate(ctx, f"Only alphanumeric and `'` symbol are allowed!", ctx.author)
 
         c.execute('UPDATE userProfile SET roomName = ? WHERE user_id = ?', (name, ctx.author.id))
         conn.commit()
@@ -209,11 +208,14 @@ class voiceCogs(commands.Cog, name='🎙️ Study Rooms'):
 
         if currentVoice and currentText:
             voiceObject = self.bot.get_channel(currentVoice)
-            await voiceObject.edit(name=name)
             textObject = self.bot.get_channel(currentText)
-            await textObject.edit(name=name)
 
-        await functions.successEmbedTemplate(ctx, f"Successfully set your room name to **{name}**.", ctx.author)
+            if voiceObject and textObject:
+                await voiceObject.edit(name=name)
+                await textObject.edit(name=name)
+                return await functions.successEmbedTemplate(ctx, f"Successfully set your room name to **{name}**. Your existing room has also been updated.", ctx.author)
+
+        await functions.successEmbedTemplate(ctx, f"Successfully set your room name to **{name}**. Changes will be reflected once you open a new room.", ctx.author)
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
@@ -237,15 +239,22 @@ class voiceCogs(commands.Cog, name='🎙️ Study Rooms'):
             textOverwrites = {
                 after.channel.guild.get_member(result): discord.PermissionOverwrite(view_channel=True),
                 member: discord.PermissionOverwrite(view_channel=True),
-                after.channel.guild.get_role(role_id=566986562525724692): discord.PermissionOverwrite(
-                    view_channel=True),
                 after.channel.guild.default_role: discord.PermissionOverwrite(view_channel=False)
             }
 
+            if after.channel.guild.get_role(role_id=566986562525724692):
+                textOverwrites[
+                    after.channel.guild.get_role(role_id=566986562525724692)] = discord.PermissionOverwrite(
+                    view_channel=True)
+
+            for member in after.channel.members:
+                textOverwrites[member] = discord.PermissionOverwrite(view_channel=True)
+
             if whitelistedUsers:
                 for user in whitelistedUsers:
-                    textOverwrites[after.channel.guild.get_member(user)] = discord.PermissionOverwrite(
-                        view_channel=True)
+                    if before.channel.guild.get_member(user):
+                        textOverwrites[after.channel.guild.get_member(user)] = discord.PermissionOverwrite(
+                            view_channel=True)
 
             textID = [r[0] for r in c.execute('SELECT textID FROM textList WHERE voiceID = ? ', (after.channel.id, ))][0]
             textObject = self.bot.get_channel(textID)
@@ -271,14 +280,30 @@ class voiceCogs(commands.Cog, name='🎙️ Study Rooms'):
                         before.channel.guild.get_member(result): discord.PermissionOverwrite(view_channel=True),
                         member: discord.PermissionOverwrite(view_channel=False),
                         before.channel.guild.default_role: discord.PermissionOverwrite(view_channel=False),
-                        before.channel.guild.get_role(role_id=566986562525724692): discord.PermissionOverwrite(
-                            view_channel=True)
                     }
+
+                    voiceOverwrites = {
+                        member: discord.PermissionOverwrite(move_members=True),
+                    }
+
+                    if after.channel.guild.get_role(role_id=566986562525724692):
+                        voiceOverwrites[
+                            after.channel.guild.get_role(role_id=566986562525724692)] = discord.PermissionOverwrite(
+                            view_channel=True)
+                        textOverwrites[
+                            after.channel.guild.get_role(role_id=566986562525724692)] = discord.PermissionOverwrite(
+                            view_channel=True)
+
+                    for member in before.channel.members:
+                        textOverwrites[member] = discord.PermissionOverwrite(view_channel=True)
 
                     if whitelistedUsers:
                         for user in whitelistedUsers:
-                            textOverwrites[before.channel.guild.get_member(user)] = discord.PermissionOverwrite(
-                                view_channel=True)
+                            if before.channel.guild.get_member(user):
+                                textOverwrites[before.channel.guild.get_member(user)] = discord.PermissionOverwrite(
+                                    view_channel=True)
+                                voiceOverwrites[after.channel.guild.get_member(user)] = discord.PermissionOverwrite(
+                                    move_members=True)
 
                     textID = [r[0] for r in c.execute('SELECT textID FROM textList WHERE voiceID = ? ', (before.channel.id,))][0]
                     textObject = self.bot.get_channel(textID)
@@ -314,21 +339,25 @@ class voiceCogs(commands.Cog, name='🎙️ Study Rooms'):
 
             voiceOverwrites = {
                 member: discord.PermissionOverwrite(move_members=True),
-                after.channel.guild.get_role(role_id=566986562525724692): discord.PermissionOverwrite(move_members=True)
             }
             textOverwrites = {
                 member: discord.PermissionOverwrite(view_channel=True),
                 after.channel.guild.default_role: discord.PermissionOverwrite(view_channel=False),
-                after.channel.guild.get_role(role_id=566986562525724692): discord.PermissionOverwrite(
-                    view_channel=True),
             }
+
+            if after.channel.guild.get_role(role_id=566986562525724692):
+                voiceOverwrites[after.channel.guild.get_role(role_id=566986562525724692)] = discord.PermissionOverwrite(
+                    view_channel=True)
+                textOverwrites[after.channel.guild.get_role(role_id=566986562525724692)] = discord.PermissionOverwrite(
+                    view_channel=True)
 
             if whitelistedUsers:
                 for user in whitelistedUsers:
-                    voiceOverwrites[after.channel.guild.get_member(user)] = discord.PermissionOverwrite(
-                        move_members=True)
-                    textOverwrites[after.channel.guild.get_member(user)] = discord.PermissionOverwrite(
-                        view_channel=True)
+                    if after.channel.guild.get_member(user):
+                        voiceOverwrites[after.channel.guild.get_member(user)] = discord.PermissionOverwrite(
+                            move_members=True)
+                        textOverwrites[after.channel.guild.get_member(user)] = discord.PermissionOverwrite(
+                            view_channel=True)
 
             newVoiceChannel = await after.channel.guild.create_voice_channel(name=roomName,
                                                                              user_limit=podLimit, category=category,
