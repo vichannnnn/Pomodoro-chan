@@ -171,8 +171,8 @@ class voiceCogs(commands.Cog, name='🎙️ Study Rooms'):
             await functions.successEmbedTemplate(ctx, f"Successfully removed {user.mention} from whitelist. They are now unable to bypass your Study Room user limit.", ctx.author)
 
 
-    @commands.command(description="setlimit [user limit]**\n\nCustomize the user limit of your study room. Type 0 for unlimited.")
-    @commands.cooldown(1, 5, commands.BucketType.user)
+    @commands.command(description="setlimit [user limit]**\n\nCustomize the user limit of your study room. Type 0 for unlimited. Has a cooldown of 30 minutes.")
+    @commands.cooldown(1, 1800, commands.BucketType.user)
     async def setlimit(self, ctx, limit: int):
 
         if limit < 0 or limit > 99:
@@ -190,8 +190,8 @@ class voiceCogs(commands.Cog, name='🎙️ Study Rooms'):
         return await functions.successEmbedTemplate(ctx, f"Successfully set your Study Room user limit to **{limit}**.",
                                                     ctx.author)
 
-    @commands.command(description="setroomname [name]**\n\nCustomize the name of your study room.")
-    @commands.cooldown(1, 5, commands.BucketType.user)
+    @commands.command(description="setroomname [name]**\n\nCustomize the name of your study room. Has a cooldown of 30 minutes.")
+    @commands.cooldown(1, 1800, commands.BucketType.user)
     async def setroomname(self, ctx, *, name):
 
         if len(name) > 30:

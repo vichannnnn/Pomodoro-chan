@@ -39,6 +39,36 @@ class adminCommands(commands.Cog, name="🛠️ Admin Commands"):
     def __init__(self, bot):
         self.bot = bot
 
+    @commands.command(description="adminsetroomname [@User] [Name]**\n\nCustomize the name of a user's study room. Bot Owner Only.")
+    @commands.cooldown(1, 5, commands.BucketType.user)
+    @commands.is_owner()
+    async def adminsetroomname(self, ctx, member: discord.Member, *, name):
+
+        if len(name) > 30:
+            return await functions.errorEmbedTemplate(ctx,
+                                                      f"Please reduce the length of your room name to less than 30 characters.",
+                                                      ctx.author)
+
+        c.execute('UPDATE userProfile SET roomName = ? WHERE user_id = ?', (name, member.id))
+        conn.commit()
+
+        c.execute('SELECT currentVoice, currentText FROM userProfile WHERE user_id = ?', (member.id,))
+        currentVoice, currentText = c.fetchall()[0]
+
+        if currentVoice and currentText:
+            voiceObject = self.bot.get_channel(currentVoice)
+            textObject = self.bot.get_channel(currentText)
+            if voiceObject and textObject:
+                await voiceObject.edit(name=name)
+                await textObject.edit(name=name)
+                return await functions.successEmbedTemplate(ctx,
+                                                            f"Successfully set {member.mention}'s room name to **{name}**. Their existing room has also been updated.",
+                                                            ctx.author)
+
+        await functions.successEmbedTemplate(ctx,
+                                             f"Successfully set {member.mention}'s room name to **{name}**. Changes will be reflected once they open a new room.",
+                                             ctx.author)
+
     @commands.command(description="voicedetails**\n\nChecks the current voice channels settings. Administrator Only.")
     @commands.cooldown(1, 5, commands.BucketType.user)
     @has_permissions(administrator=True)
