@@ -209,7 +209,6 @@ class voiceCogs(commands.Cog, name='🎙️ Study Rooms'):
         if currentVoice and currentText:
             voiceObject = self.bot.get_channel(currentVoice)
             textObject = self.bot.get_channel(currentText)
-
             if voiceObject and textObject:
                 await voiceObject.edit(name=name)
                 await textObject.edit(name=name)
