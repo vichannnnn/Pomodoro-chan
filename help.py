@@ -49,9 +49,15 @@ class Help(commands.Cog, name="Help"):
         embed = discord.Embed(description=f"Type `{currentPrefix}myprefix` for this server's prefix.\nType `{currentPrefix}setprefix` to change the prefix for this server.",
                               colour=embedColour(ctx.guild.id))
         embed.set_author(name=f"{str(self.bot.user).partition('#')[0]}'s Commands and Help", icon_url=self.bot.user.avatar_url)
-        embed.set_footer(
-            text=f"React for more category help! :: {ctx.message.guild}'s prefix currently is {currentPrefix}",
-            icon_url=self.bot.user.avatar_url)
+        # vio lemme keep this pls 😭
+        if ctx.message.author.id == 345945337770410006:
+            embed.set_footer(
+                text=f"React for more category help! :: {ctx.message.guild}'s prefix currently is {currentPrefix}\nhawwo abu 🤓",
+                icon_url=self.bot.user.avatar_url)
+        else:
+            embed.set_footer(
+                text=f"React for more category help! :: {ctx.message.guild}'s prefix currently is {currentPrefix}",
+                icon_url=self.bot.user.avatar_url)
 
         for cog in reactionsCogs:
             cog_commands = self.bot.get_cog(cog).get_commands()
