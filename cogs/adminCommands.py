@@ -5,6 +5,10 @@ import cogs.colourEmbed as functions
 import traceback
 import sqlite3
 
+sConn = sqlite3.connect('saved.db', timeout=5.0)
+sC = sConn.cursor()
+sC.execute('CREATE TABLE IF NOT EXISTS subjectChannels (server_id INT, channel_id INT, UNIQUE(server_id, channel_id))')
+
 fConn = sqlite3.connect('focus.db', timeout=5.0)
 fC = fConn.cursor()
 
@@ -263,7 +267,26 @@ class adminCommands(commands.Cog, name="🛠️ Admin Commands"):
                 await functions.successEmbedTemplate(ctx,
                                                      f"Successfully removed {channel.mention} as a focus blacklist channel.\n\nUsers who are in focused mode will be able to access this channel now.",
                                                      ctx.message.author)
+    
+    @commands.command(
+        description = f"subjectchannel [channel mention]**\n\nToggles whether Valued Contributors are able to save messages in Subject Channels. Requires Administrator Permission.")
+    @commands.cooldown(1, 5, commands.BucketType.user)
+    @has_permissions(administrator = True)
+    async def subjectchannel(self, ctx, channel: discord.TextChannel):
+        channelList = [chnl[0] for chnl in sC.execute('SELECT channel_id FROM subjectChannels WHERE server_id = ? ', (ctx.guild.id,))]
 
+        if channel.id not in channelList:
+            sC.execute('INSERT INTO subjectChannels VALUES (?, ?)', (ctx.guild.id, channel.id))
+            sConn.commit()
+            await functions.successEmbedTemplate(ctx,
+                                                    f"Successfully added {channel.mention} as a Subject Channel. **Valued Contributors** will now be able to save messages in this channel",
+                                                    ctx.message.author)
+        else:
+            sC.execute('DELETE FROM subjectChannels WHERE channel_id = ?', (channel.id,))
+            sConn.commit()
+            await functions.successEmbedTemplate(ctx,
+                                                    f"Successfully removed {channel.mention} as a Subject Channel. **Valued Contributors** will no longer be able to save messages in thsi channel",
+                                                    ctx.message.author)
 
 def setup(bot):
     bot.add_cog(adminCommands(bot))
