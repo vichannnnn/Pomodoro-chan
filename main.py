@@ -206,7 +206,6 @@ async def ping(ctx):
     embed = discord.Embed(description=f"Pong! Time taken: **{round(bot.latency, 3) * 1000} ms**!")
     await ctx.send(embed=embed)
 
-
 bot.remove_command('help')
 
 if __name__ == "__main__":
