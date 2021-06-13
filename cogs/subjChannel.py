@@ -83,8 +83,17 @@ class subjCogs(commands.Cog, name = "🔖 Subject Channels"):
     @commands.command(description = f"question**\n\nReceive a random question in the subject channel `p!question` is used in.\n\nUsage:\n`p!question <id if any>`")
     @commands.cooldown(1, 5, commands.BucketType.user)
     async def question(self, ctx, id = None):
+        channelList = [chnl[0] for chnl in c.execute('SELECT channel_id FROM subjectChannels WHERE server_id = ? ', (ctx.guild.id,))]
+        
         # get channel id
         chnl_id = ctx.message.channel.id
+        
+        # check if channel is approved
+        if chnl_id not in channelList:
+            await functions.errorEmbedTemplate(ctx,
+                                                f"You are not allowed to use this command in <#{chnl_id}>.",
+                                                ctx.message.author)
+        
         # if no id provided
         if not id:
             c.execute("SELECT id, chapters, image, question, answer FROM savedQuestions WHERE channel_id = ? ORDER BY RANDOM() LIMIT 1", (chnl_id,))
@@ -105,7 +114,7 @@ class subjCogs(commands.Cog, name = "🔖 Subject Channels"):
             await ctx.send(embed=embed)
         except IndexError:
             await functions.errorEmbedTemplate(ctx,
-                                                f"Failed to retrieve <#{chnl_id}> with `id = {id}`, question might have been deleted.",
+                                                f"Failed to retrieve question from <#{chnl_id}> with `id = {id}`, question might have been deleted.",
                                                 ctx.message.author)
 
     
