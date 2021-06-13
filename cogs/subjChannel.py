@@ -144,7 +144,7 @@ class subjCogs(commands.Cog, name = "🔖 Subject Channels"):
                     await ctx.send(embed=embed)
                 except discord.errors.HTTPException:
                     await functions.errorEmbedTemplate(ctx,
-                                                        f"Something went wrong when embedding the saved image. Ping <@624251187277070357>/<@345945337770410006> for help if problem persists.",
+                                                        f"Something went wrong when embedding the saved image for question `id: {num}`. Ping <@624251187277070357>/<@345945337770410006> for help if problem persists.",
                                                         ctx.message.author)
             except IndexError:
                 await functions.errorEmbedTemplate(ctx,
