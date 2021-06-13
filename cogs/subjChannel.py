@@ -71,13 +71,26 @@ class subjCogs(commands.Cog, name = "🔖 Subject Channels"):
     @commands.cooldown(1, 5, commands.BucketType.user)
     @has_permissions(manage_messages = True)
     async def qdel(self, ctx, id):
+        channelList = [chnl[0] for chnl in c.execute('SELECT channel_id FROM subjectChannels WHERE server_id = ? ', (ctx.guild.id,))]
         #get channel id
         chnl_id = ctx.message.channel.id
-        c.execute("DELETE FROM savedQuestions WHERE id = ? AND channel_id = ?", (id, chnl_id))
-        conn.commit()
-        await functions.successEmbedTemplate(ctx,
-                                            f"Successfully deleted question and answer in <#{chnl_id}> with `id = {id}`", 
-                                            ctx.message.author)
+        
+        # check if command is being used in a subject channel
+        if chnl_id not in channelList:
+            await functions.errorEmbedTemplate(ctx,
+                                                f"Please use this command in the respective subject channel you want to delete the question in.",
+                                                ctx.message.author)
+        else:
+            try:
+                c.execute("DELETE FROM savedQuestions WHERE id = ? AND channel_id = ?", (id, chnl_id))
+                conn.commit()
+                await functions.successEmbedTemplate(ctx,
+                                                    f"Successfully deleted question and answer in <#{chnl_id}> with `id = {id}`", 
+                                                    ctx.message.author)
+            except sqlite3.IntegrityError:
+                await functions.errorEmbedTemplate(ctx,
+                                                   f"Unable to delete question with in <#{chnl_id} with `id = {id}`, try again and request for help if needed",
+                                                   ctx.message.author)
 
 
     @commands.command(description = f"question**\n\nReceive a random question in the subject channel `p!question` is used in.\n\nUsage:\n`p!question <id if any>`")
@@ -93,29 +106,30 @@ class subjCogs(commands.Cog, name = "🔖 Subject Channels"):
             await functions.errorEmbedTemplate(ctx,
                                                 f"You are not allowed to use this command in <#{chnl_id}>.",
                                                 ctx.message.author)
-        
-        # if no id provided
-        if not id:
-            c.execute("SELECT id, chapters, image, question, answer FROM savedQuestions WHERE channel_id = ? ORDER BY RANDOM() LIMIT 1", (chnl_id,))
+        # channel approved
         else:
-            c.execute("SELECT id, chapters, image, question, answer FROM savedQuestions WHERE id = ? AND channel_id = ?", (id, chnl_id))
-        try: 
-            num, tag, img, qn, ans = c.fetchall()[0]
-            description = f"__**Question from <#{chnl_id}>**__\n\n{qn}\n\nDiscussion and Answer: ||{ans}||\n\nChapters: `{tag}`"
-            # 0xdecaf0 R: 222 G: 202 B:240
-            embed = discord.Embed(description=description, color = discord.Colour.from_rgb(222,202,240))
-            if img != "no image":
-                embed.set_image(url = img)
-            # vio lemme keep this pls 😭
-            if ctx.message.author.id == 345945337770410006:
-                embed.set_footer(text=f"🥶Requested by {ctx.message.author}\nid: {num}", icon_url=ctx.message.author.avatar_url)
+            # if no id provided
+            if not id:
+                c.execute("SELECT id, chapters, image, question, answer FROM savedQuestions WHERE channel_id = ? ORDER BY RANDOM() LIMIT 1", (chnl_id,))
             else:
-                embed.set_footer(text=f"Requested by {ctx.message.author}\nid: {num}", icon_url=ctx.message.author.avatar_url)
-            await ctx.send(embed=embed)
-        except IndexError:
-            await functions.errorEmbedTemplate(ctx,
-                                                f"Failed to retrieve question from <#{chnl_id}> with `id = {id}`, question might have been deleted.",
-                                                ctx.message.author)
+                c.execute("SELECT id, chapters, image, question, answer FROM savedQuestions WHERE id = ? AND channel_id = ?", (id, chnl_id))
+            try: 
+                num, tag, img, qn, ans = c.fetchall()[0]
+                description = f"__**Question from <#{chnl_id}>**__\n\n{qn}\n\nDiscussion and Answer: ||{ans}||\n\nChapters: `{tag}`"
+                # 0xdecaf0 R: 222 G: 202 B:240
+                embed = discord.Embed(description=description, color = discord.Colour.from_rgb(222,202,240))
+                if img != "no image":
+                    embed.set_image(url = img)
+                # vio lemme keep this pls 😭
+                if ctx.message.author.id == 345945337770410006:
+                    embed.set_footer(text=f"🥶Requested by {ctx.message.author}\nid: {num}", icon_url=ctx.message.author.avatar_url)
+                else:
+                    embed.set_footer(text=f"Requested by {ctx.message.author}\nid: {num}", icon_url=ctx.message.author.avatar_url)
+                await ctx.send(embed=embed)
+            except IndexError:
+                await functions.errorEmbedTemplate(ctx,
+                                                    f"Failed to retrieve question from <#{chnl_id}> with `id = {id}`, question might have been deleted.",
+                                                    ctx.message.author)
 
     
     @commands.command(description = f"bank**\n\nRequest for spreadsheet link of all the saved questions from SGExams.\n\nUsage:\n`p!bank`")
