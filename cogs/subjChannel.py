@@ -140,7 +140,12 @@ class subjCogs(commands.Cog, name = "🔖 Subject Channels"):
                     embed.set_footer(text=f"Requested by {ctx.message.author}🥶\nid: {num}", icon_url=ctx.message.author.avatar_url)
                 else:
                     embed.set_footer(text=f"Requested by {ctx.message.author}\nid: {num}", icon_url=ctx.message.author.avatar_url)
-                await ctx.send(embed=embed)
+                try:
+                    await ctx.send(embed=embed)
+                except discord.errors.HTTPException:
+                    await functions.errorEmbedTemplate(ctx,
+                                                        f"Something went wrong when embedding the saved image. Ping <@624251187277070357>/<@345945337770410006> for help if problem persists.",
+                                                        ctx.message.author)
             except IndexError:
                 await functions.errorEmbedTemplate(ctx,
                                                     f"Failed to retrieve question from <#{chnl_id}> with `id = {id}`, question might have been deleted.",
