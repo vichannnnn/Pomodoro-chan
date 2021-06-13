@@ -158,7 +158,7 @@ async def on_command_error(ctx, error):
         minutes = seconds / 60
         hours = seconds / 3600
 
-        if ctx.message.author.id == 624251187277070357:
+        if ctx.message.author.id == 345945337770410006:
             await ctx.reinvoke()
             return
 
@@ -216,4 +216,4 @@ if __name__ == "__main__":
             exc = f'{type(e).__name__}: {e}'
             print(f'Failed to load extension {extension}\n{exc}')
 
-bot.run(f'{bot_token}', reconnect=True)
+bot.run(f'bot_token', reconnect=True)
