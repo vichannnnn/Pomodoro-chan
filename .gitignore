@@ -1,3 +1,5 @@
 authentication.py
 *.db
-
+cogs/tracker.py
+cogs/anfangCogs.py
+cogs/testingcogs.py

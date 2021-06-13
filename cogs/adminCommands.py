@@ -39,6 +39,15 @@ class adminCommands(commands.Cog, name="🛠️ Admin Commands"):
     def __init__(self, bot):
         self.bot = bot
 
+    @commands.command(
+        description="adminreset [@User]**\n\nResets a user. Bot Owner Only.")
+    @commands.cooldown(1, 5, commands.BucketType.user)
+    @commands.is_owner()
+    async def adminreset(self, ctx, member: discord.Member):
+        c.execute('UPDATE userProfile SET currentVoice = ?, currentText = ? WHERE user_id = ? ', (0, 0, member.id))
+        conn.commit()
+        await ctx.send("Done!")
+
     @commands.command(description="adminsetroomname [@User] [Name]**\n\nCustomize the name of a user's study room. Bot Owner Only.")
     @commands.cooldown(1, 5, commands.BucketType.user)
     @commands.is_owner()
