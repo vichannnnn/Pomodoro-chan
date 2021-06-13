@@ -57,10 +57,10 @@ class subjCogs(commands.Cog, name = "🔖 Subject Channels"):
         # get channel id
         chnl_id = ctx.message.channel.id
         try:
-            c.execute("UPDATE savedQuestions SET chapters = ? WHERE server_id = ? AND channel_id = ? AND id = ? ", (topics.tolower(), ctx.guild.id, chnl_id, id))
+            c.execute("UPDATE savedQuestions SET chapters = ? WHERE server_id = ? AND channel_id = ? AND id = ? ", (topics.lower(), ctx.guild.id, chnl_id, id))
             conn.commit()
             await functions.successEmbedTemplate(ctx,
-                                                 f"Successfully set `{topics.tolower()}` as tags to <#{chnl_id}> question:`{id}`.",
+                                                 f"Successfully set `{topics.lower()}` as tags to <#{chnl_id}> question:`{id}`.",
                                                  ctx.message.author)
         except sqlite3.IntegrityError:
             await functions.errorEmbedTemplate(ctx,
