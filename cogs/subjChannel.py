@@ -47,7 +47,7 @@ class subjCogs(commands.Cog, name = "🔖 Subject Channels"):
                     id += 1
                     continue
             await functions.successEmbedTemplate(ctx,
-                                                 f"Successfully saved question and answer in <#{chnl_id}>", 
+                                                 f"Successfully saved question and answer in <#{chnl_id}>, `id: {id}`", 
                                                  ctx.message.author)
         
     @commands.command(description = f"tag**\n\nTag questions with their topics (requires permissions).\n\nUsage:\n`p!tag <qn id>\n\"<topic1,topic2,...>\"`")
@@ -122,7 +122,7 @@ class subjCogs(commands.Cog, name = "🔖 Subject Channels"):
                     embed.set_image(url = img)
                 # vio lemme keep this pls 😭
                 if ctx.message.author.id == 345945337770410006:
-                    embed.set_footer(text=f"🥶Requested by {ctx.message.author}\nid: {num}", icon_url=ctx.message.author.avatar_url)
+                    embed.set_footer(text=f"Requested by {ctx.message.author}🥶\nid: {num}", icon_url=ctx.message.author.avatar_url)
                 else:
                     embed.set_footer(text=f"Requested by {ctx.message.author}\nid: {num}", icon_url=ctx.message.author.avatar_url)
                 await ctx.send(embed=embed)
