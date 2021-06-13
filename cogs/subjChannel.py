@@ -30,6 +30,7 @@ class subjCogs(commands.Cog, name = "🔖 Subject Channels"):
                                                 f"Unable to save message in <#{chnl_id}>, please ask **Administrators** for help.",
                                                 ctx.message.author)
         elif img and (".png" not in img and ".jpeg" not in img):
+            print(type(img))
             await functions.errorEmbedTemplate(ctx,
                                                 f"That seems wrong, your image is not in `.png` or `.jpeg` format, please check again.",
                                                 ctx.message.author)
@@ -50,7 +51,7 @@ class subjCogs(commands.Cog, name = "🔖 Subject Channels"):
                     id += 1
                     continue
             await functions.successEmbedTemplate(ctx,
-                                                 f"Successfully saved question and answer in <#{chnl_id}>. Question has `id: {id}`.", 
+                                                 f"Successfully saved question and answer in <#{chnl_id}>. Question has `id: {id}`.",  
                                                  ctx.message.author)
         
     @commands.command(description = f"tag**\n\nTag questions with their topics (requires permissions).\n\nUsage:\n`p!tag <qn id>\n\"<topic1,topic2,...>\"`")
@@ -90,16 +91,22 @@ class subjCogs(commands.Cog, name = "🔖 Subject Channels"):
                                                 f"Please use this command in the respective subject channel you want to delete the question in.",
                                                 ctx.message.author)
         else:
-            try:
-                c.execute("DELETE FROM savedQuestions WHERE id = ? AND channel_id = ?", (id, chnl_id))
-                conn.commit()
-                await functions.successEmbedTemplate(ctx,
-                                                    f"Successfully deleted question and answer in <#{chnl_id}> with `id: {id}`", 
-                                                    ctx.message.author)
-            except sqlite3.IntegrityError:
+            c.execute("SELECT question FROM savedQuestions WHERE server_id = ? AND channel_id = ? AND id = ? ", (ctx.guild.id, chnl_id, id))
+            if not c.fetchall():
                 await functions.errorEmbedTemplate(ctx,
-                                                   f"Unable to delete question with in <#{chnl_id} with `id = {id}`, try again and request for help if needed",
-                                                   ctx.message.author)
+                                                f"<#{chnl_id}> question `id: {id}` does not exist in the database, please check again.",
+                                                ctx.message.author)
+            else:
+                try:
+                    c.execute("DELETE FROM savedQuestions WHERE id = ? AND channel_id = ?", (id, chnl_id))
+                    conn.commit()
+                    await functions.successEmbedTemplate(ctx,
+                                                        f"Successfully deleted question and answer in <#{chnl_id}> with `id: {id}`", 
+                                                        ctx.message.author)
+                except sqlite3.IntegrityError:
+                    await functions.errorEmbedTemplate(ctx,
+                                                    f"Unable to delete question with in <#{chnl_id} with `id = {id}`, try again and request for help if needed",
+                                                    ctx.message.author)
 
 
     @commands.command(description = f"question**\n\nReceive a random question in the subject channel `p!question` is used in.\n\nUsage:\n`p!question <id if any>`")
@@ -151,4 +158,4 @@ class subjCogs(commands.Cog, name = "🔖 Subject Channels"):
 
 def setup(bot):
     bot.add_cog(subjCogs(bot))
-    
+   
