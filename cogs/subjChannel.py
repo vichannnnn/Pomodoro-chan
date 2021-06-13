@@ -30,7 +30,6 @@ class subjCogs(commands.Cog, name = "🔖 Subject Channels"):
                                                 f"Unable to save message in <#{chnl_id}>, please ask **Administrators** for help.",
                                                 ctx.message.author)
         elif img and (".png" not in img and ".jpeg" not in img):
-            print(type(img))
             await functions.errorEmbedTemplate(ctx,
                                                 f"That seems wrong, your image is not in `.png` or `.jpeg` format, please check again.",
                                                 ctx.message.author)
