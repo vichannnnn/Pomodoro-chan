@@ -27,9 +27,12 @@ class subjCogs(commands.Cog, name = "🔖 Subject Channels"):
         # check if channel is approved
         if chnl_id not in channelList:
             await functions.errorEmbedTemplate(ctx,
-                                                f"Unable to save message in <#{chnl_id}>, please ask **Administrators** for help",
+                                                f"Unable to save message in <#{chnl_id}>, please ask **Administrators** for help.",
                                                 ctx.message.author)
-            
+        elif img and (".png" not in img and ".jpeg" not in img):
+            await functions.errorEmbedTemplate(ctx,
+                                                f"That seems wrong, your image is not in `.png` or `.jpeg` format, please check again.",
+                                                ctx.message.author)
         else:
             ## create table if not exist
             #c.execute("CREATE TABLE IF NOT EXISTS Chnl" + str(chnl_id) + " (`server_id` INT, `id` INT PRIMARY KEY, `image` TEXT, `question` TEXT,`answer` TEXT)")
@@ -47,7 +50,7 @@ class subjCogs(commands.Cog, name = "🔖 Subject Channels"):
                     id += 1
                     continue
             await functions.successEmbedTemplate(ctx,
-                                                 f"Successfully saved question and answer in <#{chnl_id}>, `id: {id}`", 
+                                                 f"Successfully saved question and answer in <#{chnl_id}>. Question has `id: {id}`.",  
                                                  ctx.message.author)
         
     @commands.command(description = f"tag**\n\nTag questions with their topics (requires permissions).\n\nUsage:\n`p!tag <qn id>\n\"<topic1,topic2,...>\"`")
@@ -56,16 +59,22 @@ class subjCogs(commands.Cog, name = "🔖 Subject Channels"):
     async def tag(self, ctx, id, topics):
         # get channel id
         chnl_id = ctx.message.channel.id
-        try:
-            c.execute("UPDATE savedQuestions SET chapters = ? WHERE server_id = ? AND channel_id = ? AND id = ? ", (topics.lower(), ctx.guild.id, chnl_id, id))
-            conn.commit()
-            await functions.successEmbedTemplate(ctx,
-                                                 f"Successfully set `{topics.lower()}` as tags to <#{chnl_id}> question:`{id}`.",
-                                                 ctx.message.author)
-        except sqlite3.IntegrityError:
+        c.execute("SELECT question FROM savedQuestions WHERE server_id = ? AND channel_id = ? AND id = ? ", (ctx.guild.id, chnl_id, id))
+        if not c.fetchall():
             await functions.errorEmbedTemplate(ctx,
-                                                f"Unable to set tag for question in <#{chnl_id}>, check again and ping <@624251187277070357>/<@345945337770410006> for help if problem persists.",
+                                                f"<#{chnl_id}> question `id: {id}` does not exist in the database, check again and ping <@624251187277070357>/<@345945337770410006> for help if problem persists.",
                                                 ctx.message.author)
+        else:
+            try:
+                c.execute("UPDATE savedQuestions SET chapters = ? WHERE server_id = ? AND channel_id = ? AND id = ? ", (topics.lower(), ctx.guild.id, chnl_id, id))
+                conn.commit()
+                await functions.successEmbedTemplate(ctx,
+                                                    f"Successfully set `{topics.lower()}` as tags to <#{chnl_id}> question:`{id}`.\nAdd quotation marks `\"<tags>\"` to tag more than one chapters.",
+                                                    ctx.message.author)
+            except sqlite3.IntegrityError:
+                await functions.errorEmbedTemplate(ctx,
+                                                    f"Unable to set tag for <#{chnl_id}> question `id: {id}`, check again and ping <@624251187277070357>/<@345945337770410006> for help if problem persists.",
+                                                    ctx.message.author)
 
     @commands.command(description = f"qdel**\n\nDeletes the question associated with an id.\n\nUsage: `p!qdel <id>`")
     @commands.cooldown(1, 5, commands.BucketType.user)
@@ -81,16 +90,22 @@ class subjCogs(commands.Cog, name = "🔖 Subject Channels"):
                                                 f"Please use this command in the respective subject channel you want to delete the question in.",
                                                 ctx.message.author)
         else:
-            try:
-                c.execute("DELETE FROM savedQuestions WHERE id = ? AND channel_id = ?", (id, chnl_id))
-                conn.commit()
-                await functions.successEmbedTemplate(ctx,
-                                                    f"Successfully deleted question and answer in <#{chnl_id}> with `id = {id}`", 
-                                                    ctx.message.author)
-            except sqlite3.IntegrityError:
+            c.execute("SELECT question FROM savedQuestions WHERE server_id = ? AND channel_id = ? AND id = ? ", (ctx.guild.id, chnl_id, id))
+            if not c.fetchall():
                 await functions.errorEmbedTemplate(ctx,
-                                                   f"Unable to delete question with in <#{chnl_id} with `id = {id}`, try again and request for help if needed",
-                                                   ctx.message.author)
+                                                f"<#{chnl_id}> question `id: {id}` does not exist in the database, please check again.",
+                                                ctx.message.author)
+            else:
+                try:
+                    c.execute("DELETE FROM savedQuestions WHERE id = ? AND channel_id = ?", (id, chnl_id))
+                    conn.commit()
+                    await functions.successEmbedTemplate(ctx,
+                                                        f"Successfully deleted question and answer in <#{chnl_id}> with `id: {id}`", 
+                                                        ctx.message.author)
+                except sqlite3.IntegrityError:
+                    await functions.errorEmbedTemplate(ctx,
+                                                    f"Unable to delete question with in <#{chnl_id} with `id = {id}`, try again and request for help if needed",
+                                                    ctx.message.author)
 
 
     @commands.command(description = f"question**\n\nReceive a random question in the subject channel `p!question` is used in.\n\nUsage:\n`p!question <id if any>`")
@@ -125,7 +140,12 @@ class subjCogs(commands.Cog, name = "🔖 Subject Channels"):
                     embed.set_footer(text=f"Requested by {ctx.message.author}🥶\nid: {num}", icon_url=ctx.message.author.avatar_url)
                 else:
                     embed.set_footer(text=f"Requested by {ctx.message.author}\nid: {num}", icon_url=ctx.message.author.avatar_url)
-                await ctx.send(embed=embed)
+                try:
+                    await ctx.send(embed=embed)
+                except discord.errors.HTTPException:
+                    await functions.errorEmbedTemplate(ctx,
+                                                        f"Something went wrong when embedding the saved image for question `id: {num}`. Ping <@624251187277070357>/<@345945337770410006> for help if problem persists.",
+                                                        ctx.message.author)
             except IndexError:
                 await functions.errorEmbedTemplate(ctx,
                                                     f"Failed to retrieve question from <#{chnl_id}> with `id = {id}`, question might have been deleted.",
@@ -142,3 +162,4 @@ class subjCogs(commands.Cog, name = "🔖 Subject Channels"):
 
 def setup(bot):
     bot.add_cog(subjCogs(bot))
+   
