@@ -289,7 +289,7 @@ class adminCommands(commands.Cog, name="🛠️ Admin Commands"):
             sConn.commit()
             await functions.successEmbedTemplate(ctx,
                                                     f"Successfully added {channel.mention} as a Subject Channel. **Valued Contributors** will now be able to save messages in this channel",
-                                                    ctx.message.author)
+                                                        ctx.message.author)
         else:
             sC.execute('DELETE FROM subjectChannels WHERE channel_id = ?', (channel.id,))
             sConn.commit()

@@ -183,6 +183,7 @@ class voiceCogs(commands.Cog, name='🎙️ Study Rooms'):
     async def setlimit(self, ctx, limit: int):
 
         if limit < 0 or limit > 99:
+            self.bot.get_command(ctx.command.name).reset_cooldown(ctx)
             return await functions.errorEmbedTemplate(ctx, f"User Limit can only be between 0 to 99!", ctx.author)
 
         c.execute('UPDATE userProfile SET podLimit = ? WHERE user_id = ? ', (limit, ctx.author.id))
@@ -202,9 +203,11 @@ class voiceCogs(commands.Cog, name='🎙️ Study Rooms'):
     async def setroomname(self, ctx, *, name):
 
         if len(name) > 30:
+            self.bot.get_command(ctx.command.name).reset_cooldown(ctx)
             return await functions.errorEmbedTemplate(ctx, f"Please reduce the length of your room name to less than 30 characters.", ctx.author)
 
         if not re.match("^[a-zA-Z0-9' ]*$", name):
+            self.bot.get_command(ctx.command.name).reset_cooldown(ctx)
             return await functions.errorEmbedTemplate(ctx, f"Only alphanumeric and `'` symbol are allowed!", ctx.author)
 
         c.execute('UPDATE userProfile SET roomName = ? WHERE user_id = ?', (name, ctx.author.id))

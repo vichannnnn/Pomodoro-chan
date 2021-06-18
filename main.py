@@ -149,6 +149,8 @@ async def on_guild_join(guild):
         prefixDictionary.update({guild.id: f"{defaultPrefix}"})
         print(f"Bot joined a new server: Created a prefix database for {guild.id}: {guild}")
 
+async def cooldownReset(ctx):
+    return await ctx.reinvoke()
 
 @bot.event
 async def on_command_error(ctx, error):
@@ -157,10 +159,6 @@ async def on_command_error(ctx, error):
         seconds = error.retry_after
         minutes = seconds / 60
         hours = seconds / 3600
-
-        if ctx.message.author.id == 345945337770410006:
-            await ctx.reinvoke()
-            return
 
         if seconds / 60 < 1:
             embed = discord.Embed(
@@ -188,6 +186,7 @@ async def on_command_error(ctx, error):
     if isinstance(error, commands.MissingRequiredArgument):
         embed = discord.Embed(description='Missing arguments on your command! Please check and retry again!')
         await ctx.send(embed=embed)
+        bot.get_command(ctx.command.name).reset_cooldown(ctx)
         return
 
     if isinstance(error, commands.CommandNotFound):
@@ -202,7 +201,9 @@ async def on_command_error(ctx, error):
 
 
 @bot.command()
-async def ping(ctx):
+@commands.cooldown(1, 5, commands.BucketType.user)
+async def ping(ctx, arg: int):
+
     embed = discord.Embed(description=f"Pong! Time taken: **{round(bot.latency, 3) * 1000} ms**!")
     await ctx.send(embed=embed)
 
@@ -216,4 +217,4 @@ if __name__ == "__main__":
             exc = f'{type(e).__name__}: {e}'
             print(f'Failed to load extension {extension}\n{exc}')
 
-bot.run(f'bot_token', reconnect=True)
+bot.run(f'{bot_token}', reconnect=True)
