@@ -5,21 +5,59 @@ from discord.gateway import EventListener
 import cogs.colourEmbed as functions
 import traceback
 import sqlite3
+import pickle
+import os.path
+import gspread
+from authentication import api_key
 
 conn = sqlite3.connect("saved.db", timeout = 5.0)
 c = conn.cursor()
 c.execute('CREATE TABLE IF NOT EXISTS savedQuestions (server_id INT, channel_id INT, channel_name TEXT, id INT, chapters TEXT, image TEXT, question TEXT, answer TEXT, UNIQUE(channel_id, id))')
 conn.row_factory = sqlite3.Row
 
+SCOPES = ['https://www.googleapis.com/auth/drive']
+headers = [['Topic'], ['ID'], ['Chapter'], ['Image'], ['Question'], ['Answer']]
+gc = gspread.service_account(filename="token.json", scopes=SCOPES)
+spreadsheet = gc.open_by_key("1BiJnc8-R7Dy7HWWTGWbZeG7HYD6DNDEAiHij0Gf61Co")
+sht1 = spreadsheet.sheet1
+
+def newTopic(name):
+    ns = spreadsheet.add_worksheet(title=name, rows="100", cols="20")
+    ns.update('A1:F1', headers, major_dimension="columns")
+    ns.format('A1:F1', {"textFormat": {"bold": True}})
+
+def nextAvailableRow(worksheet):
+    str_list = list(worksheet.col_values(1))
+
+    try:
+        i = str_list.index('')
+
+    except ValueError:
+        str_list = list(filter(None, worksheet.col_values(1)))
+        return str(len(str_list) + 1)
+    return i + 1
+
+def addQuestion(topic, id, chapter, image, question, answer):
+    worksheet = spreadsheet.worksheet(topic)
+    n = nextAvailableRow(worksheet)
+    worksheet.update(f'A{n}:F{n}', [[topic], [id], [chapter], [image], [question], [answer]], major_dimension="columns")
+    worksheet.sort((2, 'asc'), range='B2:F1000')
+
+def deleteQuestion(topic, id):
+    worksheet = spreadsheet.worksheet(topic)
+    values_list = worksheet.find(str(id), in_column=2)
+    worksheet.delete_rows(values_list.row)
+    worksheet.sort((2, 'asc'), range='B2:F1000')
+
 
 class subjCogs(commands.Cog, name = "🔖 Subject Channels"):
     def __init__(self, bot):
         self.bot = bot
     
-    @commands.command(description = f"save**\n\nSave questions in subject channels (requires permissions).\n\nUsage:\n`p!save \"<question>\" <discussion/answer link> <img if any>`")
+    @commands.command(description = f"save**\n\nSave questions in subject channels (requires permissions).\n\nUsage:\n`p!save <chapter>\"<question>\" <discussion/answer link> <img if any>`")
     @commands.cooldown(1, 5, commands.BucketType.user)
     @has_permissions(manage_messages = True)
-    async def save(self, ctx, qn, ans, img = None):
+    async def save(self, ctx, chapter, qn, ans, img = None):
         channelList = [chnl[0] for chnl in c.execute('SELECT channel_id FROM subjectChannels WHERE server_id = ? ', (ctx.guild.id,))]
         # get channel id
         chnl_id = ctx.message.channel.id
@@ -41,10 +79,15 @@ class subjCogs(commands.Cog, name = "🔖 Subject Channels"):
                 try:
                     # if img is provided                                                # server_id channel_id channelname id chapters image question answer
                     if img:
-                        c.execute("INSERT INTO savedQuestions VALUES (?, ?, ?, ?, ?, ?, ?, ?) ", (ctx.guild.id, chnl_id, name, id, "not tagged", img, qn, ans))
+                        c.execute("INSERT INTO savedQuestions VALUES (?, ?, ?, ?, ?, ?, ?, ?) ", (ctx.guild.id, chnl_id, name, id, chapter, img, qn, ans))
                     else:
-                        c.execute("INSERT INTO savedQuestions VALUES (?, ?, ?, ?, ?, ?, ?, ?) ", (ctx.guild.id, chnl_id, name, id, "not tagged", "no image", qn, ans))
+                        c.execute("INSERT INTO savedQuestions VALUES (?, ?, ?, ?, ?, ?, ?, ?) ", (ctx.guild.id, chnl_id, name, id, chapter, "no image", qn, ans))
                     conn.commit()
+
+                    msg = await ctx.send(
+                        "<a:loading:826529505656176651> Adding question into spreadsheet... <a:loading:826529505656176651>")
+                    addQuestion(name, id, chapter, img, qn, ans)
+                    await msg.delete()
                     break
                 except sqlite3.IntegrityError:
                     id += 1
@@ -53,28 +96,28 @@ class subjCogs(commands.Cog, name = "🔖 Subject Channels"):
                                                  f"Successfully saved question and answer in <#{chnl_id}>. Question has `id: {id}`.",  
                                                  ctx.message.author)
         
-    @commands.command(description = f"tag**\n\nTag questions with their topics (requires permissions).\n\nUsage:\n`p!tag <qn id>\n\"<topic1,topic2,...>\"`")
-    @commands.cooldown(1, 5, commands.BucketType.user)
-    @has_permissions(manage_messages = True)
-    async def tag(self, ctx, id, topics):
-        # get channel id
-        chnl_id = ctx.message.channel.id
-        c.execute("SELECT question FROM savedQuestions WHERE server_id = ? AND channel_id = ? AND id = ? ", (ctx.guild.id, chnl_id, id))
-        if not c.fetchall():
-            await functions.errorEmbedTemplate(ctx,
-                                                f"<#{chnl_id}> question `id: {id}` does not exist in the database, check again and ping <@624251187277070357>/<@345945337770410006> for help if problem persists.",
-                                                ctx.message.author)
-        else:
-            try:
-                c.execute("UPDATE savedQuestions SET chapters = ? WHERE server_id = ? AND channel_id = ? AND id = ? ", (topics.lower(), ctx.guild.id, chnl_id, id))
-                conn.commit()
-                await functions.successEmbedTemplate(ctx,
-                                                    f"Successfully set `{topics.lower()}` as tags to <#{chnl_id}> question:`{id}`.\nAdd quotation marks `\"<tags>\"` to tag more than one chapters.",
-                                                    ctx.message.author)
-            except sqlite3.IntegrityError:
-                await functions.errorEmbedTemplate(ctx,
-                                                    f"Unable to set tag for <#{chnl_id}> question `id: {id}`, check again and ping <@624251187277070357>/<@345945337770410006> for help if problem persists.",
-                                                    ctx.message.author)
+    # @commands.command(description = f"tag**\n\nTag questions with their topics (requires permissions).\n\nUsage:\n`p!tag <qn id>\n\"<topic1,topic2,...>\"`")
+    # @commands.cooldown(1, 5, commands.BucketType.user)
+    # @has_permissions(manage_messages = True)
+    # async def tag(self, ctx, id, topics):
+    #     # get channel id
+    #     chnl_id = ctx.message.channel.id
+    #     c.execute("SELECT question FROM savedQuestions WHERE server_id = ? AND channel_id = ? AND id = ? ", (ctx.guild.id, chnl_id, id))
+    #     if not c.fetchall():
+    #         await functions.errorEmbedTemplate(ctx,
+    #                                             f"<#{chnl_id}> question `id: {id}` does not exist in the database, check again and ping <@624251187277070357>/<@345945337770410006> for help if problem persists.",
+    #                                             ctx.message.author)
+    #     else:
+    #         try:
+    #             c.execute("UPDATE savedQuestions SET chapters = ? WHERE server_id = ? AND channel_id = ? AND id = ? ", (topics.lower(), ctx.guild.id, chnl_id, id))
+    #             conn.commit()
+    #             await functions.successEmbedTemplate(ctx,
+    #                                                 f"Successfully set `{topics.lower()}` as tags to <#{chnl_id}> question:`{id}`.\nAdd quotation marks `\"<tags>\"` to tag more than one chapters.",
+    #                                                 ctx.message.author)
+    #         except sqlite3.IntegrityError:
+    #             await functions.errorEmbedTemplate(ctx,
+    #                                                 f"Unable to set tag for <#{chnl_id}> question `id: {id}`, check again and ping <@624251187277070357>/<@345945337770410006> for help if problem persists.",
+    #                                                 ctx.message.author)
 
     @commands.command(description = f"qdel**\n\nDeletes the question associated with an id.\n\nUsage: `p!qdel <id>`")
     @commands.cooldown(1, 5, commands.BucketType.user)
@@ -99,6 +142,10 @@ class subjCogs(commands.Cog, name = "🔖 Subject Channels"):
                 try:
                     c.execute("DELETE FROM savedQuestions WHERE id = ? AND channel_id = ?", (id, chnl_id))
                     conn.commit()
+                    msg = await ctx.send(
+                        "<a:loading:826529505656176651> Deleting question from spreadsheet... <a:loading:826529505656176651>")
+                    deleteQuestion(ctx.channel.name, id)
+                    await msg.delete()
                     await functions.successEmbedTemplate(ctx,
                                                         f"Successfully deleted question and answer in <#{chnl_id}> with `id: {id}`", 
                                                         ctx.message.author)
@@ -155,9 +202,9 @@ class subjCogs(commands.Cog, name = "🔖 Subject Channels"):
     @commands.command(description = f"bank**\n\nRequest for spreadsheet link of all the saved questions from SGExams.\n\nUsage:\n`p!bank`")
     @commands.cooldown(1, 5, commands.BucketType.user)
     async def bank(self, ctx):
-        spreadsheet = "placeholder_link"
+        spreadsheet = "https://docs.google.com/spreadsheets/d/1BiJnc8-R7Dy7HWWTGWbZeG7HYD6DNDEAiHij0Gf61Co"
         await functions.successEmbedTemplate(ctx,
-                                             f"All questions can be found in this link:\n{spreadsheet}\nRequest for navigation help if needed.",
+                                             f"All questions can be found over [here]({spreadsheet})!\nRequest for navigation help if needed.",
                                              ctx.message.author)
 
 def setup(bot):

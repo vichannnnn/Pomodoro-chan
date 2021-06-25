@@ -4,6 +4,7 @@ from discord.ext.commands import has_permissions
 import cogs.colourEmbed as functions
 import traceback
 import sqlite3
+from cogs.subjChannel import newTopic
 
 sConn = sqlite3.connect('saved.db', timeout=5.0)
 sC = sConn.cursor()
@@ -287,6 +288,10 @@ class adminCommands(commands.Cog, name="🛠️ Admin Commands"):
         if channel.id not in channelList:
             sC.execute('INSERT INTO subjectChannels VALUES (?, ?)', (ctx.guild.id, channel.id))
             sConn.commit()
+            msg = await ctx.send("<a:loading:826529505656176651> Setting up google spreadsheet for the topic... <a:loading:826529505656176651>")
+            newTopic(channel.name)
+            await msg.delete()
+
             await functions.successEmbedTemplate(ctx,
                                                     f"Successfully added {channel.mention} as a Subject Channel. **Valued Contributors** will now be able to save messages in this channel",
                                                         ctx.message.author)

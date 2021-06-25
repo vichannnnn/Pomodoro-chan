@@ -3,3 +3,4 @@ authentication.py
 cogs/tracker.py
 cogs/filterCogs.py
 cogs/debugCogs.py
+token.json
