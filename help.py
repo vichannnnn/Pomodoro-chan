@@ -7,11 +7,58 @@ conn = sqlite3.connect('prefix.db', timeout=5.0)
 c = conn.cursor()
 conn.row_factory = sqlite3.Row
 
-class Help(commands.Cog, name="Help"):
+class Choice(discord.ui.Select):
+    def __init__(self, ctx, placeholder, choices):
+        self.ctx = ctx
+        options = []
+        for emoji, desc, label in choices:
+            options.append(discord.SelectOption(label=label[1:],
+                             description=desc,
+                             emoji=emoji))
+        super().__init__(placeholder=placeholder, min_values=1, max_values=1, options=options)
 
+    async def callback(self, interaction: discord.Interaction):
+        currentPrefix = [i[0] for i in c.execute(f'SELECT prefix FROM prefix WHERE guildID = ? ', (self.ctx.guild.id,))][0]
+        labels = [l.label for l in self.options]
+        idx = labels.index(self.values[0])
+        self.choice = str(self.options[idx].emoji) + self.values[0]
+
+        embed = discord.Embed(title=f'{self.choice} Help', colour=embedColour(self.ctx.guild.id))
+        embed.set_footer(
+            text=f"React for more category help! :: {self.ctx.message.guild}'s prefix currently is {currentPrefix}",
+            icon_url=self.ctx.author.avatar.url)
+
+        cog_commands = self.ctx.bot.get_cog(f"{self.choice}").get_commands()
+        commands_list = ''
+
+        for comm in cog_commands:
+            commands_list += f'**{comm.name}** - {comm.description}\n'
+
+            embed.add_field(name=comm, value=f"**{currentPrefix}{comm.description}", inline=True)
+        await interaction.message.edit(embed=embed)
+
+
+
+class DropdownView(discord.ui.View):
+    def __init__(self, ctx, item):
+        super().__init__(timeout=60.0)
+        self.add_item(item)
+        self.item = item
+        self.ctx = ctx
+
+    async def interaction_check(self, interaction):
+        self.message = interaction.message
+        return interaction.user.id == self.ctx.author.id
+
+    async def on_timeout(self):
+        embed = discord.Embed(description="Help command has timed out. Please restart the command.")
+        await self.message.edit(embed=embed, view=None)
+
+
+
+class Help(commands.Cog, name="Help"):
     def __init__(self, bot):
         self.bot = bot
-        print("help.py extension has loaded!")
 
     commands.command(
         name='help',
@@ -20,44 +67,27 @@ class Help(commands.Cog, name="Help"):
         usage='cog'
     )
 
-    @commands.command()
+    @commands.command(brief="Help command to navigate the bot.")
     async def help(self, ctx):
 
-        admin: bool = ctx.author.permissions_in(ctx.channel).manage_messages
+        admin: bool = ctx.channel.permissions_for(ctx.author).administrator
 
         if admin:
             excludedCogs = ['Help', 'ColourEmbed', 'Example Cogs', 'Jishaku', 'Status']
-            rCogs = [cog for cog in self.bot.cogs.keys() if cog not in excludedCogs]
-            reactionsCogs = [cog for cog in rCogs if len(self.bot.get_cog(cog).get_commands()) != 0]
-            reactions = [cog[0] for cog in reactionsCogs]
-
         else:
             excludedCogs = ['Help', 'ColourEmbed', 'Example Cogs', 'Jishaku', 'Status', "🛠️ Admin Commands"]
-            rCogs = [cog for cog in self.bot.cogs.keys() if cog not in excludedCogs]
-            reactionsCogs = [cog for cog in rCogs if len(self.bot.get_cog(cog).get_commands()) != 0]
-            reactions = [cog[0] for cog in reactionsCogs]
 
-        cogs = [cog for cog in self.bot.cogs.keys()]
+        rCogs = [cog for cog in self.bot.cogs.keys() if cog not in excludedCogs]
+        reactionsCogs = [cog for cog in rCogs if len(self.bot.get_cog(cog).get_commands()) != 0]
+        reactions = [cog[0] for cog in reactionsCogs]
+        currentPrefix = [i[0] for i in c.execute(f'SELECT prefix FROM prefix WHERE guildID = ? ', (ctx.guild.id, ))][0]
 
-        prefixDictionary = {}
-
-        for prefix in c.execute(f'SELECT guild_id, prefix FROM prefix'):
-            prefixDictionary.update({prefix[0]: f"{prefix[1]}"})
-
-        currentPrefix = prefixDictionary[ctx.message.guild.id]
-
-        embed = discord.Embed(description=f"Type `{currentPrefix}myprefix` for this server's prefix.\nType `{currentPrefix}setprefix` to change the prefix for this server.",
+        embed = discord.Embed(description=f"Type `{currentPrefix}myprefix` for this server's prefix.\n"
+                                          f"Type `{currentPrefix}setprefix` to change the prefix for this server.",
                               colour=embedColour(ctx.guild.id))
-        embed.set_author(name=f"{str(self.bot.user).partition('#')[0]}'s Commands and Help", icon_url=self.bot.user.avatar_url)
-        # vio lemme keep this pls 😭
-        if ctx.message.author.id == 345945337770410006:
-            embed.set_footer(
-                text=f"React for more category help! :: {ctx.message.guild}'s prefix currently is {currentPrefix}\nhawwo abu 🤓",
-                icon_url=self.bot.user.avatar_url)
-        else:
-            embed.set_footer(
-                text=f"React for more category help! :: {ctx.message.guild}'s prefix currently is {currentPrefix}",
-                icon_url=self.bot.user.avatar_url)
+        embed.set_author(name=f"{str(self.bot.user).partition('#')[0]}'s Commands and Help", icon_url=self.bot.user.avatar.url)
+        embed.set_footer(text=f"React for more category help! :: {ctx.message.guild}'s prefix currently is {currentPrefix}",
+            icon_url=self.bot.user.avatar.url)
 
         for cog in reactionsCogs:
             cog_commands = self.bot.get_cog(cog).get_commands()
@@ -68,47 +98,10 @@ class Help(commands.Cog, name="Help"):
 
             embed.add_field(name=cog, value=commands_list, inline=False)
 
-        msg = await ctx.send(embed=embed)
-
-        for react in reactions:
-            await msg.add_reaction(react)
-
-        def check(reaction, user):
-
-            return str(reaction.emoji) in reactions and user == ctx.message.author and reaction.message.id == msg.id
-
-        async def handle_reaction(reaction, msg, check):
-
-            await msg.remove_reaction(reaction, ctx.message.author)
-            reactionIndex = reactions.index(str(reaction.emoji))
-
-            if str(reaction.emoji) == reactions[reactionIndex]:
-
-                help_embed = discord.Embed(title=f'{reactionsCogs[reactionIndex]} Help',
-                              colour=embedColour(ctx.guild.id))
-                embed.set_footer(
-                    text=f"React for more category help! :: {ctx.message.guild}'s prefix currently is {currentPrefix}",
-                    icon_url=self.bot.user.avatar_url)
-
-                cog_commands = self.bot.get_cog(f"{reactionsCogs[reactionIndex]}").get_commands()
-                commands_list = ''
-
-                for comm in cog_commands:
-                    commands_list += f'**{comm.name}** - {comm.description}\n'
-
-                    help_embed.add_field(name=comm, value=f"**{currentPrefix}{comm.description}", inline=True)
-
-                await msg.edit(embed=help_embed)
-
-            else:
-
-                return
-
-            reaction, user = await self.bot.wait_for('reaction_add', check=check, timeout=30)
-            await handle_reaction(reaction, msg, check)
-
-        reaction, user = await self.bot.wait_for('reaction_add', check=check, timeout=30)
-        await handle_reaction(reaction, msg, check)
+        lst = [[reactions[n], "", r] for n, r in enumerate(reactionsCogs)]
+        view = DropdownView(ctx, Choice(ctx, "Choose a category", lst))
+        view.message = await ctx.send(embed=embed, view=view)
+        await view.wait()
 
 
 def setup(bot):

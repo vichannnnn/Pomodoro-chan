@@ -5,6 +5,7 @@ import cogs.colourEmbed as functions
 import traceback
 import sqlite3
 from cogs.subjChannel import newTopic
+from cogs.Study import focusRoleObject
 
 sConn = sqlite3.connect('saved.db', timeout=5.0)
 sC = sConn.cursor()
@@ -13,85 +14,30 @@ sC.execute('CREATE TABLE IF NOT EXISTS subjectChannels (server_id INT, channel_i
 fConn = sqlite3.connect('focus.db', timeout=5.0)
 fC = fConn.cursor()
 
-fC.execute('CREATE TABLE IF NOT EXISTS focusSettings (server_id INT PRIMARY KEY, role_id INT) ')
-fC.execute('CREATE TABLE IF NOT EXISTS focusChannels (server_id INT, channel_id INT, UNIQUE(server_id, channel_id)) ')
-
 conn = sqlite3.connect('bot.db', timeout=5.0)
 c = conn.cursor()
 conn.row_factory = sqlite3.Row
 
-c.execute('''CREATE TABLE IF NOT EXISTS voiceList (`server_id` INT, `channelID` INT, UNIQUE(server_id, channelID)) ''')
-c.execute('''CREATE TABLE IF NOT EXISTS textList (`server_id` INT, `textID` INT, voiceID INT, UNIQUE(server_id, textID)) ''')
-c.execute('''CREATE TABLE IF NOT EXISTS joinChannel (`server_id` INT PRIMARY KEY, `channelID` INT) ''')
-c.execute('''CREATE TABLE IF NOT EXISTS channelCategory (`server_id` INT PRIMARY KEY, `categoryID` INT) ''')
-
-async def focusRoleObject(ctx):
-    roleCheck = [role[0] for role in
-                 fC.execute('SELECT role_id FROM focusSettings WHERE server_id = ? ', (ctx.guild.id,))]
-
-    if roleCheck:
-        focusRole = ctx.guild.get_role(role_id=roleCheck[0])
-
-        if not focusRole:
-            return False
-    else:
-        return False
-
-    return focusRole
+c.execute('''CREATE TABLE IF NOT EXISTS voiceList (`serverID` INT, `channelID` INT, UNIQUE(serverID, channelID)) ''')
+c.execute('''CREATE TABLE IF NOT EXISTS textList (`serverID` INT, `textID` INT, voiceID INT, UNIQUE(serverID, textID)) ''')
+c.execute('''CREATE TABLE IF NOT EXISTS joinChannel (`serverID` INT PRIMARY KEY, `channelID` INT) ''')
+c.execute('''CREATE TABLE IF NOT EXISTS channelCategory (`serverID` INT PRIMARY KEY, `categoryID` INT) ''')
 
 
-class adminCommands(commands.Cog, name="🛠️ Admin Commands"):
+class AdminCommands(commands.Cog, name="🛠️ Admin Commands"):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(
-        description="adminreset [@User]**\n\nResets a user. Bot Owner Only.")
-    @commands.cooldown(1, 5, commands.BucketType.user)
-    @commands.is_owner()
-    async def adminreset(self, ctx, member: discord.Member):
-        c.execute('UPDATE userProfile SET currentVoice = ?, currentText = ? WHERE user_id = ? ', (0, 0, member.id))
-        conn.commit()
-        await ctx.send("Done!")
-
-    @commands.command(description="adminsetroomname [@User] [Name]**\n\nCustomize the name of a user's study room. Bot Owner Only.")
-    @commands.cooldown(1, 5, commands.BucketType.user)
-    @commands.is_owner()
-    async def adminsetroomname(self, ctx, member: discord.Member, *, name):
-
-        if len(name) > 30:
-            return await functions.errorEmbedTemplate(ctx,
-                                                      f"Please reduce the length of your room name to less than 30 characters.",
-                                                      ctx.author)
-
-        c.execute('UPDATE userProfile SET roomName = ? WHERE user_id = ?', (name, member.id))
-        conn.commit()
-
-        c.execute('SELECT currentVoice, currentText FROM userProfile WHERE user_id = ?', (member.id,))
-        currentVoice, currentText = c.fetchall()[0]
-
-        if currentVoice and currentText:
-            voiceObject = self.bot.get_channel(currentVoice)
-            textObject = self.bot.get_channel(currentText)
-            if voiceObject and textObject:
-                await voiceObject.edit(name=name)
-                await textObject.edit(name=name)
-                return await functions.successEmbedTemplate(ctx,
-                                                            f"Successfully set {member.mention}'s room name to **{name}**. Their existing room has also been updated.",
-                                                            ctx.author)
-
-        await functions.successEmbedTemplate(ctx,
-                                             f"Successfully set {member.mention}'s room name to **{name}**. Changes will be reflected once they open a new room.",
-                                             ctx.author)
-
-    @commands.command(description="voicedetails**\n\nChecks the current voice channels settings. Administrator Only.")
+    @commands.command(brief="Checks the current voice channels settings. Administrator Only.",
+                      description="voicesettings**\n\nChecks the current voice channels settings. Administrator Only.")
     @commands.cooldown(1, 5, commands.BucketType.user)
     @has_permissions(administrator=True)
-    async def voicedetails(self, ctx):
+    async def voicesettings(self, ctx):
 
         joinList = [channel[0] for channel in
-                    c.execute(''' SELECT channelID FROM joinChannel WHERE server_id = ? ''', (ctx.guild.id,))]
+                    c.execute(''' SELECT channelID FROM joinChannel WHERE serverID = ? ''', (ctx.guild.id,))]
         categoryList = [channel[0] for channel in
-                        c.execute(''' SELECT categoryID FROM channelCategory WHERE server_id = ? ''', (ctx.guild.id,))]
+                        c.execute(''' SELECT categoryID FROM channelCategory WHERE serverID = ? ''', (ctx.guild.id,))]
 
         description = "Study Rooms will spawn under Voice Category while joining 'Join Here' Channel will trigger creation of Study Rooms.\n\n"
 
@@ -106,8 +52,8 @@ class adminCommands(commands.Cog, name="🛠️ Admin Commands"):
         embed = discord.Embed(title="Voice Channel/Category List", description=description)
         await ctx.send(embed=embed)
 
-    @commands.command(
-        description="voicesystemcreate**\n\nAutomatically sets up the Study Rooms System in the server. Administrator Only.")
+    @commands.command(brief="Automatically sets up the Study Rooms System in the server. Administrator Only.",
+                      description="voicesystemcreate**\n\nAutomatically sets up the Study Rooms System in the server. Administrator Only.")
     @commands.cooldown(1, 5, commands.BucketType.user)
     @has_permissions(administrator=True)
     async def voicesystemcreate(self, ctx):
@@ -127,24 +73,29 @@ class adminCommands(commands.Cog, name="🛠️ Admin Commands"):
                                                  ctx.message.author)
 
         except sqlite3.IntegrityError:
-            await joinHereChannel.delete()
+            try:
+                await joinHereChannel.delete()
+            except:
+                pass
+
             await functions.errorEmbedTemplate(ctx,
                                                f"There is already a voice system enabled in your server! Please make sure to run `voicesystemdelete` before running this command again!",
                                                ctx.message.author)
 
-    @commands.command(
+
+    @commands.command(brief="Automatically deletes the existing Study Rooms System in the server. Administrator Only.",
         description="voicesystemdelete**\n\nAutomatically deletes the existing Study Rooms System in the server. Administrator Only.")
     @commands.cooldown(1, 5, commands.BucketType.user)
     @has_permissions(administrator=True)
     async def voicesystemdelete(self, ctx):
 
         joinHereChannel = [r[0] for r in
-                           c.execute('SELECT channelID from joinChannel WHERE server_id = ? ', (ctx.guild.id,))]
+                           c.execute('SELECT channelID from joinChannel WHERE serverID = ? ', (ctx.guild.id,))]
         categoryChannel = [r[0] for r in
-                           c.execute('SELECT categoryID from channelCategory WHERE server_id = ? ', (ctx.guild.id,))]
+                           c.execute('SELECT categoryID from channelCategory WHERE serverID = ? ', (ctx.guild.id,))]
 
-        # if not joinHereChannel and not categoryChannel:
-        #     return await functions.errorEmbedTemplate(ctx, f"Study Rooms System has not been set up in this server yet!", ctx.author)
+        if not joinHereChannel and not categoryChannel:
+            return await functions.errorEmbedTemplate(ctx, f"Study Rooms System has not been set up in this server yet!", ctx.author)
 
         channelObject = self.bot.get_channel(joinHereChannel[0])
         categoryObject = self.bot.get_channel(categoryChannel[0])
@@ -160,7 +111,7 @@ class adminCommands(commands.Cog, name="🛠️ Admin Commands"):
             pass
 
         channelList = [chnl[0] for chnl in
-                       c.execute('SELECT channelID FROM voiceList WHERE server_id = ? ', (ctx.guild.id,))]
+                       c.execute('SELECT channelID FROM voiceList WHERE serverID = ? ', (ctx.guild.id,))]
 
         for channel in channelList:
             try:
@@ -169,28 +120,36 @@ class adminCommands(commands.Cog, name="🛠️ Admin Commands"):
             except:
                 pass
 
-        c.execute(''' DELETE FROM channelCategory WHERE server_id = ? ''', (ctx.guild.id,))
+        c.execute(''' DELETE FROM channelCategory WHERE serverID = ? ''', (ctx.guild.id,))
         conn.commit()
-        c.execute(''' DELETE FROM joinChannel WHERE server_id = ? ''', (ctx.guild.id,))
+        c.execute(''' DELETE FROM joinChannel WHERE serverID = ? ''', (ctx.guild.id,))
         conn.commit()
-        c.execute(''' DELETE FROM voiceList WHERE server_id = ? ''', (ctx.guild.id,))
+        c.execute(''' DELETE FROM voiceList WHERE serverID = ? ''', (ctx.guild.id,))
         conn.commit()
 
         await functions.successEmbedTemplate(ctx, f"Successfully deleted the Study Rooms System in this server.",
                                              ctx.author)
 
-    @commands.command(description=f"embedsettings [colour code e.g. 0xffff0]**\n\nChanges the colour of the embed.")
+    @commands.command(brief="Changes the colour of the embed. Administrator Only.",
+                      description=f"embedsettings [colour code e.g. 0xffff0]**\n\nChanges the colour of the embed. Administrator Only.")
     @commands.cooldown(1, 5, commands.BucketType.user)
     @has_permissions(administrator=True)
-    async def embedsettings(self, ctx, colour):
+    async def embedsettings(self, ctx, colour: str):
 
         try:
+            colourCode = int(colour, 16)
+            if not 16777216 >= colourCode >= 0:
+                return await functions.errorEmbedTemplate(ctx, f"The colour code input is invalid, please try again.",
+                                                          ctx.author)
             await functions.colourChange(ctx, colour)
 
         except ValueError:
             traceback.print_exc()
+            return await functions.errorEmbedTemplate(ctx, f"The colour code input is invalid, please try again.",
+                                                      ctx.author)
 
-    @commands.command(description=f"focusrolesetup**\n\nSets up the Focus Role. Requires Administrator Permission.")
+    @commands.command(brief="Sets up the Focus Role. Administrator Only.",
+                      description=f"focusrolesetup**\n\nSets up the Focus Role. Administrator Only.")
     @commands.cooldown(1, 5, commands.BucketType.user)
     @has_permissions(administrator=True)
     async def focusrolesetup(self, ctx):
@@ -206,24 +165,24 @@ class adminCommands(commands.Cog, name="🛠️ Admin Commands"):
                 await functions.successEmbedTemplate(ctx, f"Successfully set-up the Focus System in this server.",
                                                      ctx.message.author)
 
-            except:
-                fC.execute('UPDATE focusSettings SET role_id = ? WHERE server_id = ?', (focusRole.id, ctx.guild.id))
+            except sqlite3.IntegrityError:
+                fC.execute('UPDATE focusSettings SET roleID = ? WHERE serverID = ?', (focusRole.id, ctx.guild.id))
                 fConn.commit()
                 return await functions.successEmbedTemplate(ctx,
-                                                            f"Something went wrong with the previous Focus Role.\n\nA new Focus Role has been set-up for this server.",
+                                                            f"Something went wrong with the previous Focus Role.\n\n"
+                                                            f"A new Focus Role has been set-up for this server.",
                                                             ctx.message.author)
 
         else:
-            return await functions.errorEmbedTemplate(ctx, f"Focus Role has already been set-up in this server!",
+            return await functions.errorEmbedTemplate(ctx, f"Focus Role has already been set-up in this server.",
                                                       ctx.message.author)
 
-    @commands.command(
-        description=f"fchannellist**\n\nShows the list of blacklisted focus channels. Requires Administrator Permission.")
+    @commands.command(brief="Shows the list of blacklisted focus channels. Administrator Only.",
+        description=f"focuschannellist**\n\nShows the list of blacklisted focus channels. Administrator Only.")
     @commands.cooldown(1, 5, commands.BucketType.user)
     @has_permissions(administrator=True)
-    async def fchannellist(self, ctx):
-        channelList = [chnl[0] for chnl in
-                       fC.execute('SELECT channel_id FROM focusChannels WHERE server_id = ? ', (ctx.guild.id,))]
+    async def focuschannellist(self, ctx):
+        channelList = [chnl[0] for chnl in fC.execute('SELECT channelID FROM focusChannels WHERE serverIDA = ? ', (ctx.guild.id,))]
 
         if not channelList:
             return await functions.errorEmbedTemplate(ctx, f"There are no focus channels in this server!", ctx.author)
@@ -243,14 +202,14 @@ class adminCommands(commands.Cog, name="🛠️ Admin Commands"):
     async def focuschannel(self, ctx, channel: discord.TextChannel):
 
         roleCheck = [role[0] for role in
-                     fC.execute('SELECT role_id FROM focusSettings WHERE server_id = ? ', (ctx.guild.id,))]
+                     fC.execute('SELECT roleID FROM focusSettings WHERE serverID = ? ', (ctx.guild.id,))]
 
         if not roleCheck:
             await functions.errorEmbedTemplate(ctx, f"Focus Role has not been set up on this server yet!",
                                                ctx.message.author)
 
         if roleCheck:
-            focusRoleObject = ctx.guild.get_role(role_id=roleCheck[0])
+            focusRoleObject = ctx.guild.get_role(roleCheck[0])
 
             if not focusRoleObject:
                 return await functions.errorEmbedTemplate(ctx,
@@ -258,7 +217,7 @@ class adminCommands(commands.Cog, name="🛠️ Admin Commands"):
                                                           ctx.message.author)
 
             channelList = [chnl[0] for chnl in
-                           fC.execute('SELECT channel_id FROM focusChannels WHERE server_id = ? ', (ctx.guild.id,))]
+                           fC.execute('SELECT channelID FROM focusChannels WHERE serverID = ? ', (ctx.guild.id,))]
 
             if channel.id not in channelList:
                 fC.execute('INSERT INTO focusChannels VALUES (?, ?)', (ctx.guild.id, channel.id))
@@ -270,7 +229,7 @@ class adminCommands(commands.Cog, name="🛠️ Admin Commands"):
                                                      ctx.message.author)
 
             else:
-                fC.execute('DELETE FROM focusChannels WHERE channel_id = ?', (channel.id,))
+                fC.execute('DELETE FROM focusChannels WHERE channelID = ?', (channel.id,))
                 fConn.commit()
                 await channel.set_permissions(focusRoleObject, read_messages=True)
 
@@ -278,8 +237,7 @@ class adminCommands(commands.Cog, name="🛠️ Admin Commands"):
                                                      f"Successfully removed {channel.mention} as a focus blacklist channel.\n\nUsers who are in focused mode will be able to access this channel now.",
                                                      ctx.message.author)
     
-    @commands.command(
-        description = f"subjectchannel [channel mention]**\n\nToggles whether Valued Contributors are able to save messages in Subject Channels. Requires Administrator Permission.")
+    @commands.command(description = f"subjectchannel [#Channel]**\n\nToggles whether Valued Contributors are able to save messages in Subject Channels. Requires Administrator Permission.")
     @commands.cooldown(1, 5, commands.BucketType.user)
     @has_permissions(administrator = True)
     async def subjectchannel(self, ctx, channel: discord.TextChannel):
@@ -303,4 +261,4 @@ class adminCommands(commands.Cog, name="🛠️ Admin Commands"):
                                                     ctx.message.author)
 
 def setup(bot):
-    bot.add_cog(adminCommands(bot))
+    bot.add_cog(AdminCommands(bot))

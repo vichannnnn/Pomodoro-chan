@@ -1,7 +1,5 @@
 import discord
 from discord.ext import commands, tasks
-import random
-
 
 class Status(commands.Cog, name='Status'):
 
@@ -15,7 +13,6 @@ class Status(commands.Cog, name='Status'):
         try:
             await self.bot.change_presence(
                 activity=discord.Activity(type=discord.ActivityType.watching, name='vichannnnn.github.io | p!help'))
-
         except:
             pass
 
