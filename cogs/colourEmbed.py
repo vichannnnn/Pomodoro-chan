@@ -8,24 +8,24 @@ conn.row_factory = sqlite3.Row
 
 c.execute(
     '''CREATE TABLE IF NOT EXISTS server (
-    `serverID` INT PRIMARY KEY, 
-    `embed` TEXT
+    serverID INT PRIMARY KEY, 
+    embed TEXT
     ) ''')
 
 
 async def requestEmbedTemplate(ctx, description, author):
     embed = discord.Embed(description=f"{description}", colour=embedColour(ctx.guild.id))
-    embed.set_footer(text=f"Requested by {author}", icon_url=author.avatar.url)
+    embed.set_footer(text=f"Requested by {author}", icon_url=author.display_avatar.url)
     return await ctx.send(embed=embed)
 
 async def errorEmbedTemplate(ctx, description, author):
     embed = discord.Embed(description=f"❎ {description}", colour=embedColour(ctx.guild.id))
-    embed.set_footer(text=f"Requested by {author}", icon_url=author.avatar.url)
+    embed.set_footer(text=f"Requested by {author}", icon_url=author.display_avatar.url)
     return await ctx.send(embed=embed)
 
 async def successEmbedTemplate(ctx, description, author):
     embed = discord.Embed(description=f"☑ {description}", colour=embedColour(ctx.guild.id))
-    embed.set_footer(text=f"Requested by {author}", icon_url=author.avatar.url)
+    embed.set_footer(text=f"Requested by {author}", icon_url=author.display_avatar.url)
     return await ctx.send(embed=embed)
 
 async def colourChange(ctx, colour):
@@ -34,10 +34,9 @@ async def colourChange(ctx, colour):
     return await successEmbedTemplate(ctx, f"Embed colour successfully set to **{colour}** for **{ctx.message.guild}**.", ctx.message.author)
 
 def embedColour(guild):
-    colourEmbed = [row[0] for row in c.execute(f'SELECT embed FROM server WHERE serverID = {guild}')][0]
+    colourEmbed = [i[0] for i in c.execute(f'SELECT embed FROM server WHERE serverID = ?', (guild,))][0]
     colourEmbedInt = int(colourEmbed, 16)
     return colourEmbedInt
-
 
 def createGuildProfile(ID):
     c.execute(''' INSERT INTO server VALUES (?, ?) ''', (ID, "0xdecaf0"))
@@ -51,16 +50,15 @@ class Settings(commands.Cog):
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
-        guild_database = [row for row in c.execute('SELECT serverID FROM server')]
-        if guild.id not in guild_database:
+        guildDatabase = [i for i in c.execute('SELECT serverID FROM server')]
+        if guild.id not in guildDatabase:
             createGuildProfile(guild.id)
-
 
     @commands.Cog.listener()
     async def on_ready(self):
-        guild_database = [row[0] for row in c.execute('SELECT serverID FROM server')]
+        guildDatabase = [i[0] for i in c.execute('SELECT serverID FROM server')]
         for guild in self.bot.guilds:
-            if guild.id not in guild_database:
+            if guild.id not in guildDatabase:
                 createGuildProfile(guild.id)
 
 

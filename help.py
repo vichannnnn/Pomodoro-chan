@@ -26,7 +26,7 @@ class Choice(discord.ui.Select):
         embed = discord.Embed(title=f'{self.choice} Help', colour=embedColour(self.ctx.guild.id))
         embed.set_footer(
             text=f"React for more category help! :: {self.ctx.message.guild}'s prefix currently is {currentPrefix}",
-            icon_url=self.ctx.author.avatar.url)
+            icon_url=self.ctx.author.display_avatar.url)
 
         cog_commands = self.ctx.bot.get_cog(f"{self.choice}").get_commands()
         commands_list = ''
@@ -60,14 +60,8 @@ class Help(commands.Cog, name="Help"):
     def __init__(self, bot):
         self.bot = bot
 
-    commands.command(
-        name='help',
-        description='The help command!',
-        aliases=['commands', 'command'],
-        usage='cog'
-    )
-
     @commands.command(brief="Help command to navigate the bot.")
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def help(self, ctx):
 
         admin: bool = ctx.channel.permissions_for(ctx.author).administrator
@@ -85,9 +79,9 @@ class Help(commands.Cog, name="Help"):
         embed = discord.Embed(description=f"Type `{currentPrefix}myprefix` for this server's prefix.\n"
                                           f"Type `{currentPrefix}setprefix` to change the prefix for this server.",
                               colour=embedColour(ctx.guild.id))
-        embed.set_author(name=f"{str(self.bot.user).partition('#')[0]}'s Commands and Help", icon_url=self.bot.user.avatar.url)
+        embed.set_author(name=f"{str(self.bot.user).partition('#')[0]}'s Commands and Help", icon_url=self.bot.user.display_avatar.url)
         embed.set_footer(text=f"React for more category help! :: {ctx.message.guild}'s prefix currently is {currentPrefix}",
-            icon_url=self.bot.user.avatar.url)
+            icon_url=self.bot.user.display_avatar.url)
 
         for cog in reactionsCogs:
             cog_commands = self.bot.get_cog(cog).get_commands()

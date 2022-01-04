@@ -4,60 +4,16 @@ import sqlite3
 import cogs.colourEmbed as functions
 import traceback
 import re
+from Database import Database
+import yaml
 
-conn = sqlite3.connect('bot.db', timeout=5.0)
-c = conn.cursor()
-conn.row_factory = sqlite3.Row
-
-c.execute(
-    '''CREATE TABLE IF NOT EXISTS voiceList (
-    `serverID` INT, 
-    `channelID` INT, 
-    UNIQUE(serverID, channelID)
-    ) ''')
-
-c.execute(
-    '''CREATE TABLE IF NOT EXISTS textList (
-    `serverID` INT, 
-    `textID` INT, 
-    voiceID INT, 
-    UNIQUE(serverID, 
-    textID)
-    ) ''')
-
-c.execute(
-    '''CREATE TABLE IF NOT EXISTS joinChannel (
-    `serverID` INT PRIMARY KEY, 
-    `channelID` INT
-    ) ''')
-
-c.execute(
-    '''CREATE TABLE IF NOT EXISTS channelCategory (
-    `serverID` INT PRIMARY KEY, 
-    `categoryID` INT
-    ) ''')
-
-c.execute(
-    '''CREATE TABLE IF NOT EXISTS userProfile (
-    `userID` INT PRIMARY KEY, 
-    roomName TEXT, 
-    podLimit INT, 
-    currentVoice INT,
-    currentText INT
-    ) ''')
-
-c.execute(
-    '''CREATE TABLE IF NOT EXISTS userWhitelist (
-    `userID` INT, 
-    `whitelistedUser` INT, 
-    UNIQUE(userID, whitelistedUser)
-    ) ''')
+with open("authentication.yml", "r", encoding="utf8") as stream:
+    yaml_data = yaml.safe_load(stream)
 
 
 def profileCreate(user):
     try:
-        c.execute('''INSERT INTO userProfile VALUES (?, ?, ?, ?, ?)''', (user.id, f"{user.name}'s Room", 0, 0, 0))
-        conn.commit()
+        Database.execute('''INSERT INTO userProfile VALUES (?, ?, ?, ?, ?)''', user.id, f"{user.name}'s Room", 0, 0, 0)
     except:
         traceback.print_exc()
 
@@ -68,7 +24,7 @@ class VoiceCogs(commands.Cog, name='🎙️ Study Rooms'):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        userDatabase = [user[0] for user in c.execute('SELECT userID FROM userProfile')]
+        userDatabase = [i[0] for i in Database.get('SELECT userID FROM userProfile')]
         for guild in self.bot.guilds:
             for member in guild.members:
                 if not member.bot:
@@ -77,7 +33,7 @@ class VoiceCogs(commands.Cog, name='🎙️ Study Rooms'):
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
-        userDatabase = [user[0] for user in c.execute('SELECT userID FROM userProfile')]
+        userDatabase = [i[0] for i in Database.get('SELECT userID FROM userProfile')]
         for member in guild.members:
             if not member.bot:
                 if member.id not in userDatabase:
@@ -85,21 +41,21 @@ class VoiceCogs(commands.Cog, name='🎙️ Study Rooms'):
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
-        userDatabase = [user[0] for user in c.execute('SELECT userID FROM userProfile')]
+        userDatabase = [i[0] for i in Database.get('SELECT userID FROM userProfile')]
         if not member.bot:
             if member.id not in userDatabase:
                 profileCreate(member)
 
-    @commands.command(description="roominfo**\n\nChecks your Study Room settings.")
+    @commands.command(brief="Checks your Study Room's Information.",
+                      description="roominfo**\n\nChecks your Study Room's Information.")
     @commands.cooldown(1, 5, commands.BucketType.user)
     async def roominfo(self, ctx):
 
-        roomName, podLimit = [[r[0], r[1]] for r in
-                              c.execute('SELECT roomName, podLimit FROM userProfile WHERE userID = ? ',
-                                        (ctx.author.id,))][
-            0]
-        whitelistedUsers = [u[0] for u in
-                            c.execute('SELECT whitelistedUser FROM userWhitelist WHERE userID = ? ', (ctx.author.id,))]
+        roomName, podLimit = [i for i in
+                              Database.get('SELECT roomName, podLimit FROM userProfile WHERE userID = ? ',
+                                           ctx.author.id)][0]
+        whitelistedUsers = [i[0] for i in
+                            Database.get('SELECT whitelistedUser FROM userWhitelist WHERE userID = ? ', ctx.author.id)]
 
         if whitelistedUsers:
             description = "**Whitelisted Users**\n"
@@ -117,33 +73,34 @@ class VoiceCogs(commands.Cog, name='🎙️ Study Rooms'):
 
         embed.add_field(name="Room Name", value=roomName)
         embed.add_field(name="Room Limit", value=f"{podLimit} Users")
-        embed.set_thumbnail(url=ctx.author.avatar.url)
+        embed.set_thumbnail(url=ctx.author.display_avatar.url)
         await ctx.send(embed=embed)
 
-    @commands.command(
-        description="roomreset**\n\nA debug command to clear your study room's cache if something went wrong.")
+    @commands.command(brief="A debug command to clear your study room's cache if something went wrong.",
+                      description="roomreset**\n\nA debug command to clear your study room's cache if something went wrong.")
     @commands.cooldown(1, 5, commands.BucketType.user)
     async def roomreset(self, ctx):
 
-        voiceChannel, textChannel = [[r[0], r[1]] for r in
-                                     c.execute('SELECT currentVoice, currentText FROM userProfile WHERE userID = ? ',
-                                               (ctx.author.id,))][0]
+        voiceChannel, textChannel = [i for i in
+                                     Database.get('SELECT currentVoice, currentText FROM userProfile WHERE userID = ? ',
+                                                  ctx.author.id)][0]
 
         textObject = self.bot.get_channel(textChannel)
         voiceObject = self.bot.get_channel(voiceChannel)
 
         if not voiceObject and not textObject:
-            c.execute('UPDATE userProfile SET currentVoice = ?, currentText = ? WHERE userID = ? ',
-                      (0, 0, ctx.author.id))
-            conn.commit()
-            return await functions.successEmbedTemplate(ctx, "Successfully reset your room!", ctx.author)
+            Database.execute('UPDATE userProfile SET currentVoice = ?, currentText = ? WHERE userID = ? ',
+                             0, 0, ctx.author.id)
+            return await functions.successEmbedTemplate(ctx, "Successfully reset your room.", ctx.author)
 
         await functions.errorEmbedTemplate(ctx,
                                            f"The command can't be used because Study Room is functioning normally.",
                                            ctx.author)
 
     @commands.command(
-        description="whitelist [@user]**\n\nWhitelist a Discord user that can bypass your Study Room Limit. Use again to remove the whitelist.")
+        brief="Whitelist a Discord user that can bypass your Study Room Limit.",
+        description="whitelist [@User]**\n\n"
+                    "Whitelist a Discord user that can bypass your Study Room Limit. Use again to remove the whitelist.")
     @commands.cooldown(1, 5, commands.BucketType.user)
     async def whitelist(self, ctx, user: discord.Member):
 
@@ -151,26 +108,24 @@ class VoiceCogs(commands.Cog, name='🎙️ Study Rooms'):
             return await functions.errorEmbedTemplate(ctx, f"You cannot whitelist yourself!", ctx.author)
 
         try:
-            c.execute('INSERT INTO userWhitelist VALUES (?, ?) ', (ctx.author.id, user.id))
-            conn.commit()
-
-            c.execute('SELECT currentVoice, currentText FROM userProfile WHERE userID = ?', (ctx.author.id,))
-            currentVoice, currentText = c.fetchall()[0]
+            Database.execute('INSERT INTO userWhitelist VALUES (?, ?) ', ctx.author.id, user.id)
+            currentVoice, currentText = [i for i in Database.get('SELECT currentVoice, currentText '
+                                                                 'FROM userProfile WHERE userID = ?', ctx.author.id)][0]
 
             if currentVoice and currentText:
-                whitelistedUsers = [u[0] for u in
-                                    c.execute('SELECT whitelistedUser FROM userWhitelist WHERE userID = ? ',
-                                              (ctx.author.id,))]
+                whitelistedUsers = [i[0] for i in
+                                    Database.get('SELECT whitelistedUser FROM userWhitelist WHERE userID = ? ',
+                                                 ctx.author.id)]
 
                 voiceOverwrites = {
                     user: discord.PermissionOverwrite(move_members=True),
                     ctx.author: discord.PermissionOverwrite(move_members=True),
-                    ctx.guild.get_role(566986562525724692): discord.PermissionOverwrite(move_members=True)
+                    ctx.guild.get_role(yaml_data['Moderators']): discord.PermissionOverwrite(move_members=True)
                 }
                 textOverwrites = {
                     user: discord.PermissionOverwrite(view_channel=True),
                     ctx.author: discord.PermissionOverwrite(view_channel=True),
-                    ctx.guild.get_role(566986562525724692): discord.PermissionOverwrite(view_channel=True),
+                    ctx.guild.get_role(yaml_data['Moderators']): discord.PermissionOverwrite(view_channel=True),
                     ctx.guild.default_role: discord.PermissionOverwrite(view_channel=False)
                 }
 
@@ -188,24 +143,25 @@ class VoiceCogs(commands.Cog, name='🎙️ Study Rooms'):
                 textObject = self.bot.get_channel(currentText)
                 await textObject.edit(overwrites=textOverwrites)
             await functions.successEmbedTemplate(ctx,
-                                                 f"Successfully whitelisted {user.mention}. They are now able to join your Study Room freely regardless of room user limit.",
+                                                 f"Successfully whitelisted {user.mention}. "
+                                                 f"They are now able to join your Study Room freely regardless of room user limit.",
                                                  ctx.author)
 
         except sqlite3.IntegrityError:
-            c.execute('DELETE FROM userWhitelist WHERE userID = ? AND whitelistedUser = ? ', (ctx.author.id, user.id))
-            conn.commit()
-            c.execute('SELECT currentVoice, currentText FROM userProfile WHERE userID = ?', (ctx.author.id,))
-            currentVoice, currentText = c.fetchall()[0]
+            Database.execute('DELETE FROM userWhitelist WHERE userID = ? AND whitelistedUser = ? ', ctx.author.id,
+                             user.id)
+            currentVoice, currentText = [i for i in Database.get('SELECT currentVoice, currentText '
+                                                                 'FROM userProfile WHERE userID = ?', ctx.author.id)][0]
 
             if currentVoice and currentText:
-                whitelistedUsers = [u[0] for u in
-                                    c.execute('SELECT whitelistedUser FROM userWhitelist WHERE userID = ? ',
-                                              (ctx.author.id,))]
+                whitelistedUsers = [i[0] for i in
+                                    Database.get('SELECT whitelistedUser FROM userWhitelist WHERE userID = ? ',
+                                                 ctx.author.id)]
 
                 voiceOverwrites = {
                     ctx.author: discord.PermissionOverwrite(move_members=True),
                     user: discord.PermissionOverwrite(move_members=False),
-                    ctx.guild.get_role(566986562525724692): discord.PermissionOverwrite(move_members=True),
+                    ctx.guild.get_role(yaml_data['Moderators']): discord.PermissionOverwrite(move_members=True),
                 }
 
                 if whitelistedUsers:
@@ -218,32 +174,33 @@ class VoiceCogs(commands.Cog, name='🎙️ Study Rooms'):
                 voiceObject = self.bot.get_channel(currentVoice)
                 await voiceObject.edit(overwrites=voiceOverwrites)
             await functions.successEmbedTemplate(ctx,
-                                                 f"Successfully removed {user.mention} from whitelist. They are now unable to bypass your Study Room user limit.",
+                                                 f"Successfully removed {user.mention} from whitelist. "
+                                                 f"They are now unable to bypass your Study Room user limit.",
                                                  ctx.author)
 
-    @commands.command(
-        description="setlimit [user limit]**\n\nCustomize the user limit of your study room. Type 0 for unlimited. Has a cooldown of 30 minutes.")
+    @commands.command(brief="Customize the user limit of your study room.",
+                      description="setlimit [User Limit]**\n\n"
+                                  "Customize the user limit of your study room. "
+                                  "Type 0 for unlimited. Has a cooldown of 30 minutes.")
     @commands.cooldown(1, 1800, commands.BucketType.user)
     async def setlimit(self, ctx, limit: int):
 
         if limit < 0 or limit > 99:
             self.bot.get_command(ctx.command.name).reset_cooldown(ctx)
-            return await functions.errorEmbedTemplate(ctx, f"User Limit can only be between 0 to 99!", ctx.author)
+            return await functions.errorEmbedTemplate(ctx, f"User Limit can only be between 0 to 99.", ctx.author)
 
-        c.execute('UPDATE userProfile SET podLimit = ? WHERE userID = ? ', (limit, ctx.author.id))
-        conn.commit()
-        c.execute('SELECT currentVoice FROM userProfile WHERE userID = ?', (ctx.author.id,))
-        result = c.fetchall()
+        Database.execute('UPDATE userProfile SET podLimit = ? WHERE userID = ? ', limit, ctx.author.id)
+        voice = \
+            [i[0] for i in Database.execute('SELECT currentVoice FROM userProfile WHERE userID = ?', ctx.author.id)][0]
 
-        if result[0][0]:
-            voiceObject = self.bot.get_channel(result[0][0])
+        if voice:
+            voiceObject = self.bot.get_channel(voice)
             await voiceObject.edit(user_limit=limit)
-
         return await functions.successEmbedTemplate(ctx, f"Successfully set your Study Room user limit to **{limit}**.",
                                                     ctx.author)
 
-    @commands.command(
-        description="setroomname [name]**\n\nCustomize the name of your study room. Has a cooldown of 30 minutes.")
+    @commands.command(brief="Customize the name of your study room.",
+                      description="setroomname [Name]**\n\nCustomize the name of your study room. Has a cooldown of 30 minutes.")
     @commands.cooldown(1, 1800, commands.BucketType.user)
     async def setroomname(self, ctx, *, name):
 
@@ -257,11 +214,9 @@ class VoiceCogs(commands.Cog, name='🎙️ Study Rooms'):
             self.bot.get_command(ctx.command.name).reset_cooldown(ctx)
             return await functions.errorEmbedTemplate(ctx, f"Only alphanumeric and `'` symbol are allowed!", ctx.author)
 
-        c.execute('UPDATE userProfile SET roomName = ? WHERE userID = ?', (name, ctx.author.id))
-        conn.commit()
-
-        c.execute('SELECT currentVoice, currentText FROM userProfile WHERE userID = ?', (ctx.author.id,))
-        currentVoice, currentText = c.fetchall()[0]
+        Database.execute('UPDATE userProfile SET roomName = ? WHERE userID = ?', name, ctx.author.id)
+        currentVoice, currentText = [i for i in Database.get('SELECT currentVoice, currentText '
+                                                             'FROM userProfile WHERE userID = ?', ctx.author.id)][0]
 
         if currentVoice and currentText:
             voiceObject = self.bot.get_channel(currentVoice)
@@ -270,26 +225,27 @@ class VoiceCogs(commands.Cog, name='🎙️ Study Rooms'):
                 await voiceObject.edit(name=name)
                 await textObject.edit(name=name)
                 return await functions.successEmbedTemplate(ctx,
-                                                            f"Successfully set your room name to **{name}**. Your existing room has also been updated.",
+                                                            f"Successfully set your room name to **{name}**. "
+                                                            f"Your existing room has also been updated.",
                                                             ctx.author)
-
-        await functions.successEmbedTemplate(ctx,
-                                             f"Successfully set your room name to **{name}**. Changes will be reflected once you open a new room.",
-                                             ctx.author)
+        return await functions.successEmbedTemplate(ctx,
+                                                    f"Successfully set your room name to **{name}**. "
+                                                    f"Changes will be reflected once you open a new room.",
+                                                    ctx.author)
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
 
-        joinList = [channel[0] for channel in
-                    c.execute(''' SELECT channelID FROM joinChannel WHERE serverID = ? ''', (member.guild.id,))]
-        userChannelList = [channel[0] for channel in
-                           c.execute(''' SELECT channelID FROM voiceList WHERE serverID = ? ''', (member.guild.id,))]
-        categoryList = [channel[0] for channel in
-                        c.execute(''' SELECT categoryID FROM channelCategory WHERE serverID = ? ''',
-                                  (member.guild.id,))]
+        joinList = [i[0] for i in
+                    Database.get(''' SELECT channelID FROM joinChannel WHERE serverID = ? ''', member.guild.id)][0]
+        userChannelList = [i[0] for i in
+                           Database.get(''' SELECT channelID FROM voiceList WHERE serverID = ? ''', member.guild.id)]
+        categoryList = [i[0] for i in
+                        Database.get(''' SELECT categoryID FROM channelCategory WHERE serverID = ? ''',
+                                     member.guild.id)][0]
 
-        joinHereChannel = self.bot.get_channel(joinList[0])
-        category = self.bot.get_channel(categoryList[0])
+        joinHereChannel = self.bot.get_channel(joinList)
+        category = self.bot.get_channel(categoryList)
 
         if after.channel == joinHereChannel and before.channel:
 
@@ -298,43 +254,36 @@ class VoiceCogs(commands.Cog, name='🎙️ Study Rooms'):
                 lenMembers = len(before.channel.members)
                 if lenMembers == 0:  # If nobody is occupying the room, deletes the channel
                     await before.channel.delete()
-                    c.execute(''' DELETE FROM voiceList WHERE channelID = ? ''', (before.channel.id,))
-                    conn.commit()
+                    Database.execute(''' DELETE FROM voiceList WHERE channelID = ? ''', before.channel.id)
                     textChannel = \
                         [r[0] for r in
-                         c.execute('SELECT textID FROM textList WHERE voiceID = ?', (before.channel.id,))][0]
+                         Database.get('SELECT textID FROM textList WHERE voiceID = ?', before.channel.id)][0]
                     textObject = self.bot.get_channel(textChannel)
                     await textObject.delete()
-                    c.execute(''' DELETE FROM textList WHERE voiceID = ? ''', (before.channel.id,))
-                    conn.commit()
-                    c.execute('UPDATE userProfile SET currentVoice = ?, currentText = ? WHERE currentVoice = ? ',
-                              (0, 0, before.channel.id))
-                    conn.commit()
-                    c.execute('UPDATE userProfile SET currentVoice = ?, currentText = ? WHERE userID = ? ',
-                              (0, 0, member.id))
-                    conn.commit()
+                    Database.execute(''' DELETE FROM textList WHERE voiceID = ? ''', before.channel.id)
+                    Database.execute('UPDATE userProfile SET currentVoice = ?, currentText = ? WHERE currentVoice = ? ',
+                                     0, 0, before.channel.id)
+                    Database.execute('UPDATE userProfile SET currentVoice = ?, currentText = ? WHERE userID = ? ',
+                                     0, 0, member.id)
                 return await member.move_to(None)
 
         if after.channel and after.channel.id in userChannelList:
-
             # If joining a room and a room is a study room,
-
-            c.execute('SELECT userID FROM userProfile WHERE currentVoice = ? ', (after.channel.id,))
-            result = c.fetchall()[0][0]
-
-            whitelistedUsers = [u[0] for u in
-                                c.execute('SELECT whitelistedUser FROM userWhitelist WHERE userID = ? ',
-                                          (result,))]
+            userID = \
+                [i[0] for i in
+                 Database.get('SELECT userID FROM userProfile WHERE currentVoice = ? ', after.channel.id)][0]
+            whitelistedUsers = [i[0] for i in
+                                Database.get('SELECT whitelistedUser FROM userWhitelist WHERE userID = ? ', userID)]
 
             textOverwrites = {
-                after.channel.guild.get_member(result): discord.PermissionOverwrite(view_channel=True),
+                after.channel.guild.get_member(userID): discord.PermissionOverwrite(view_channel=True),
                 member: discord.PermissionOverwrite(view_channel=True),
                 after.channel.guild.default_role: discord.PermissionOverwrite(view_channel=False)
             }
 
-            if after.channel.guild.get_role(566986562525724692):
+            if after.channel.guild.get_role(yaml_data['Moderators']):
                 textOverwrites[
-                    after.channel.guild.get_role(566986562525724692)] = discord.PermissionOverwrite(
+                    after.channel.guild.get_role(yaml_data['Moderators'])] = discord.PermissionOverwrite(
                     view_channel=True)
 
             for member in after.channel.members:
@@ -346,43 +295,34 @@ class VoiceCogs(commands.Cog, name='🎙️ Study Rooms'):
                         textOverwrites[after.channel.guild.get_member(user)] = discord.PermissionOverwrite(
                             view_channel=True)
 
-            textID = [r[0] for r in c.execute('SELECT textID FROM textList WHERE voiceID = ? ', (after.channel.id,))][0]
+            textID = [i[0] for i in Database.get('SELECT textID FROM textList WHERE voiceID = ? ', after.channel.id)][0]
             textObject = self.bot.get_channel(textID)
             await textObject.edit(overwrites=textOverwrites)
 
         if before.channel and before.channel.id in userChannelList:  # Tracks leaver
-
             # If leaving a channel and the channel is a study room,
-
             lenMembers = len(before.channel.members)
             if lenMembers == 0:  # If nobody is occupying the room, deletes the channel
                 await before.channel.delete()
-                c.execute(''' DELETE FROM voiceList WHERE channelID = ? ''', (before.channel.id,))
-                conn.commit()
+                Database.execute(''' DELETE FROM voiceList WHERE channelID = ? ''', before.channel.id)
                 textChannel = \
-                    [r[0] for r in c.execute('SELECT textID FROM textList WHERE voiceID = ?', (before.channel.id,))][0]
+                    [r[0] for r in Database.get('SELECT textID FROM textList WHERE voiceID = ?', before.channel.id)][0]
                 textObject = self.bot.get_channel(textChannel)
                 await textObject.delete()
-                c.execute(''' DELETE FROM textList WHERE voiceID = ? ''', (before.channel.id,))
-                conn.commit()
-                c.execute('UPDATE userProfile SET currentVoice = ?, currentText = ? WHERE currentVoice = ? ',
-                          (0, 0, before.channel.id))
-                conn.commit()
-                c.execute('UPDATE userProfile SET currentVoice = ?, currentText = ? WHERE userID = ? ',
-                          (0, 0, member.id))
-                conn.commit()
+                Database.execute(''' DELETE FROM textList WHERE voiceID = ? ''', before.channel.id)
+                Database.execute('UPDATE userProfile SET currentVoice = ?, currentText = ? WHERE currentVoice = ? ',
+                                 0, 0, before.channel.id)
+                Database.execute('UPDATE userProfile SET currentVoice = ?, currentText = ? WHERE userID = ? ',
+                                 0, 0, member.id)
 
-            c.execute('SELECT userID FROM userProfile WHERE currentVoice = ? ', (before.channel.id,))
-            user = c.fetchall()[0][0]
+            user = [i[0] for i in Database.get('SELECT userID FROM userProfile WHERE currentVoice = ? ', before.channel.id)]
 
             if user:
-                whitelistedUsers = [u[0] for u in
-                                    c.execute('SELECT whitelistedUser FROM userWhitelist WHERE userID = ? ',
-                                              (user,))]
+                whitelistedUsers = [i[0] for i in
+                                    Database.get('SELECT whitelistedUser FROM userWhitelist WHERE userID = ? ', user)]
 
                 if user == member.id or user in whitelistedUsers:
                     return
-
                 else:
                     textOverwrites = {
                         before.channel.guild.get_member(user): discord.PermissionOverwrite(view_channel=True),
@@ -394,12 +334,12 @@ class VoiceCogs(commands.Cog, name='🎙️ Study Rooms'):
                         member: discord.PermissionOverwrite(move_members=True),
                     }
 
-                    if before.channel.guild.get_role(566986562525724692):
+                    if before.channel.guild.get_role(yaml_data['Moderators']):
                         voiceOverwrites[
-                            before.channel.guild.get_role(566986562525724692)] = discord.PermissionOverwrite(
+                            before.channel.guild.get_role(yaml_data['Moderators'])] = discord.PermissionOverwrite(
                             view_channel=True)
                         textOverwrites[
-                            before.channel.guild.get_role(566986562525724692)] = discord.PermissionOverwrite(
+                            before.channel.guild.get_role(yaml_data['Moderators'])] = discord.PermissionOverwrite(
                             view_channel=True)
 
                     for member in before.channel.members:
@@ -414,8 +354,8 @@ class VoiceCogs(commands.Cog, name='🎙️ Study Rooms'):
                                     move_members=True)
 
                     textID = \
-                        [r[0] for r in
-                         c.execute('SELECT textID FROM textList WHERE voiceID = ? ', (before.channel.id,))][0]
+                        [i[0] for i in
+                         Database.get('SELECT textID FROM textList WHERE voiceID = ? ', before.channel.id)][0]
                     textObject = self.bot.get_channel(textID)
                     await textObject.edit(overwrites=textOverwrites)
 
@@ -423,18 +363,16 @@ class VoiceCogs(commands.Cog, name='🎙️ Study Rooms'):
 
         if after.channel == joinHereChannel:  # Creates a new study room
             # Check if they have an existing room
-            c.execute('SELECT currentVoice FROM userProfile WHERE userID = ?', (member.id,))
-            result = c.fetchall()
+            currentVoice = [i[0] for i in
+                            Database.get('SELECT currentVoice FROM userProfile WHERE userID = ?', member.id)][0]
 
-            if result[0][0]:
-                voiceObject = self.bot.get_channel(result[0][0])
+            if currentVoice:
+                voiceObject = self.bot.get_channel(currentVoice)
                 return await member.move_to(voiceObject)
 
-            roomName, podLimit = [[r[0], r[1]] for r in
-                                  c.execute('SELECT roomName, podLimit FROM userProfile WHERE userID = ? ',
-                                            (member.id,))][0]
-            whitelistedUsers = [u[0] for u in
-                                c.execute('SELECT whitelistedUser FROM userWhitelist WHERE userID = ? ', (member.id,))]
+            roomName, podLimit = \
+                [i for i in Database.get('SELECT roomName, podLimit FROM userProfile WHERE userID = ? ', member.id)][0]
+            whitelistedUsers = [i[0] for i in Database.get('SELECT whitelistedUser FROM userWhitelist WHERE userID = ? ', member.id)]
 
             voiceOverwrites = {
                 member: discord.PermissionOverwrite(move_members=True),
@@ -444,10 +382,10 @@ class VoiceCogs(commands.Cog, name='🎙️ Study Rooms'):
                 after.channel.guild.default_role: discord.PermissionOverwrite(view_channel=False),
             }
 
-            if after.channel.guild.get_role(566986562525724692):
-                voiceOverwrites[after.channel.guild.get_role(566986562525724692)] = discord.PermissionOverwrite(
+            if after.channel.guild.get_role(yaml_data['Moderators']):
+                voiceOverwrites[after.channel.guild.get_role(yaml_data['Moderators'])] = discord.PermissionOverwrite(
                     view_channel=True)
-                textOverwrites[after.channel.guild.get_role(566986562525724692)] = discord.PermissionOverwrite(
+                textOverwrites[after.channel.guild.get_role(yaml_data['Moderators'])] = discord.PermissionOverwrite(
                     view_channel=True)
 
             if whitelistedUsers:
@@ -467,15 +405,12 @@ class VoiceCogs(commands.Cog, name='🎙️ Study Rooms'):
             try:
                 await member.move_to(newVoiceChannel)
 
-                c.execute('UPDATE userProfile SET currentVoice = ?, currentText = ? WHERE userID = ? ',
-                          (newVoiceChannel.id, newTextChannel.id, member.id))
-                conn.commit()
-                c.execute(''' INSERT INTO voiceList VALUES (?, ?) ''',
-                          (after.channel.guild.id, newVoiceChannel.id))
-                conn.commit()
-                c.execute(''' INSERT INTO textList VALUES (?, ?, ?) ''',
-                          (after.channel.guild.id, newTextChannel.id, newVoiceChannel.id))
-                conn.commit()
+                Database.execute('UPDATE userProfile SET currentVoice = ?, currentText = ? WHERE userID = ? ',
+                                 newVoiceChannel.id, newTextChannel.id, member.id)
+                Database.execute(''' INSERT INTO voiceList VALUES (?, ?) ''',
+                                 after.channel.guild.id, newVoiceChannel.id)
+                Database.execute(''' INSERT INTO textList VALUES (?, ?, ?) ''',
+                                 after.channel.guild.id, newTextChannel.id, newVoiceChannel.id)
 
             except:
                 traceback.print_exc()

@@ -1,26 +1,27 @@
 import discord
-from discord.ext import commands, tasks
+from discord.ext import commands
+
 
 class Status(commands.Cog, name='Status'):
-
     def __init__(self, bot):
         self.bot = bot
-        self.change_status.start()
 
-    @tasks.loop(seconds=3600)
-    async def change_status(self):
+    @commands.command(brief="Sets the playing status.",
+                      description="statusset [playing/watching] [Status]**\n\nSets the playing status. Bot Owner Only.")
+    @commands.is_owner()
+    async def statusset(self, ctx, type, *, status_name):
 
-        try:
+        if type == 'playing':
+            await self.bot.change_presence(activity=discord.Game(name=status_name))
+            await ctx.send("Status successfully set!")
+
+        elif type == 'watching':
             await self.bot.change_presence(
-                activity=discord.Activity(type=discord.ActivityType.watching, name='vichannnnn.github.io | p!help'))
-        except:
-            pass
+                activity=discord.Activity(type=discord.ActivityType.watching, name=status_name))
+            await ctx.send("Status successfully set!")
 
-    @change_status.before_loop
-    async def before_status(self):
-        print('Waiting to update status...')
-        await self.bot.wait_until_ready()
-
+        else:
+            await ctx.send('Type of status has to be either `watching` or `playing`!')
 
 def setup(bot):
     bot.add_cog(Status(bot))

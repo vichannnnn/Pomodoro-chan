@@ -17,12 +17,10 @@ gc = gspread.service_account(filename="token.json", scopes=SCOPES)
 spreadsheet = gc.open_by_key("1BiJnc8-R7Dy7HWWTGWbZeG7HYD6DNDEAiHij0Gf61Co")
 sht1 = spreadsheet.sheet1
 
-
 def newTopic(name):
     ns = spreadsheet.add_worksheet(title=name, rows="100", cols="20")
     ns.update('A1:F1', headers, major_dimension="columns")
     ns.format('A1:F1', {"textFormat": {"bold": True}})
-
 
 def nextAvailableRow(worksheet):
     str_list = list(worksheet.col_values(1))
@@ -197,10 +195,10 @@ class subjCogs(commands.Cog, name="🔖 Subject Channels"):
                 # vio lemme keep this pls 😭
                 if ctx.message.author.id == 345945337770410006:
                     embed.set_footer(text=f"Requested by {ctx.message.author}🥶\nid: {num}",
-                                     icon_url=ctx.message.author.avatar.url)
+                                     icon_url=ctx.message.author.display_avatar.url)
                 else:
                     embed.set_footer(text=f"Requested by {ctx.message.author}\nid: {num}",
-                                     icon_url=ctx.message.author.avatar.url)
+                                     icon_url=ctx.message.author.display_avatar.url)
                 try:
                     await ctx.send(embed=embed)
                 except discord.errors.HTTPException:
