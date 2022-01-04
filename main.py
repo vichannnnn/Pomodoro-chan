@@ -63,8 +63,6 @@ async def determine_prefix(bot, message):
     except AttributeError:
         print("DM Error has occurred on user-end.")
 
-owners = [344350545697439747, 624251187277070357]
-
 class PersistentViewBot(commands.Bot):
     def __init__(self):
         super().__init__(
@@ -72,7 +70,7 @@ class PersistentViewBot(commands.Bot):
             intents=discord.Intents(guilds=True, messages=True,
                                     members=True, guild_reactions=True,
                                     guild_messages=True, dm_messages=True, bans=True, voice_states=True
-                                    ), slash_commands=True, owner_ids=set(owners)
+                                    ), slash_commands=True, owner_ids=set(yaml_data['Owners'])
         )
         for ext in [f'cogs.{file[:-3]}' for file in listdir('./cogs') if file.endswith('.py') and file[:3] != 'help']:
             self.load_extension(ext)
