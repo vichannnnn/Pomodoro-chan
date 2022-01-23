@@ -36,7 +36,7 @@ class AdminCommands(commands.Cog, name="🛠️ Admin Commands"):
                     Database.get(''' SELECT channelID FROM joinChannel WHERE serverID = ? ''', ctx.guild.id)]
         categoryList = [i[0] for i in
                         Database.get(''' SELECT categoryID FROM channelCategory WHERE serverID = ? ''',
-                                         ctx.guild.id)]
+                                     ctx.guild.id)]
 
         description = "Study Rooms will spawn under Voice Category while joining 'Join Here' Channel will trigger creation of Study Rooms.\n\n"
 
@@ -65,7 +65,7 @@ class AdminCommands(commands.Cog, name="🛠️ Admin Commands"):
             categoryObject = await ctx.guild.create_category_channel(name='🔊 Study Rooms')
             Database.execute(''' INSERT INTO channelCategory VALUES (?, ?) ''', ctx.guild.id, categoryObject.id)
             await functions.successEmbedTemplate(ctx,
-                                                 f"Successfully set-up the Study Rooms System! Please move the categories and voice channel to a position you would like!",
+                                                 f"Successfully set-up the Study Rooms System. Please move the categories and voice channel to a position you would like!",
                                                  ctx.message.author)
 
         except sqlite3.IntegrityError:
@@ -107,7 +107,7 @@ class AdminCommands(commands.Cog, name="🛠️ Admin Commands"):
         except:
             pass
 
-        channelList = [i[0] for i in Database.get('SELECT channelID FROM voiceList WHERE serverID = ? ', ctx.guild.id)]
+        channelList = [i[0] for i in Database.get('SELECT voiceID FROM textList WHERE serverID = ? ', ctx.guild.id)]
 
         for channel in channelList:
             try:
@@ -118,7 +118,6 @@ class AdminCommands(commands.Cog, name="🛠️ Admin Commands"):
 
         Database.execute(''' DELETE FROM channelCategory WHERE serverID = ? ''', ctx.guild.id)
         Database.execute(''' DELETE FROM joinChannel WHERE serverID = ? ''', ctx.guild.id)
-        Database.execute(''' DELETE FROM voiceList WHERE serverID = ? ''', ctx.guild.id)
         await functions.successEmbedTemplate(ctx, f"Successfully deleted the Study Rooms System in this server.",
                                              ctx.author)
 

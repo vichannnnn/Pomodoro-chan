@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+import math
 
 class Confirm(discord.ui.View):
     def __init__(self, ctx, timeout, user):
@@ -65,6 +66,7 @@ class View(discord.ui.View):
         self.ctx = ctx
         self.item = item
         self.add_item(self.item)
+
 
 class Interface(commands.Cog):
     def __init__(self, bot):

@@ -25,7 +25,7 @@ class Choice(discord.ui.Select):
 
         embed = discord.Embed(title=f'{self.choice} Help', colour=embedColour(self.ctx.guild.id))
         embed.set_footer(
-            text=f"React for more category help! :: {self.ctx.message.guild}'s prefix currently is {currentPrefix}",
+            text=f"Navigate below for more category help! :: {self.ctx.message.guild}'s prefix currently is {currentPrefix}",
             icon_url=self.ctx.author.display_avatar.url)
 
         cog_commands = self.ctx.bot.get_cog(f"{self.choice}").get_commands()
@@ -80,7 +80,7 @@ class Help(commands.Cog, name="Help"):
                                           f"Type `{currentPrefix}setprefix` to change the prefix for this server.",
                               colour=embedColour(ctx.guild.id))
         embed.set_author(name=f"{str(self.bot.user).partition('#')[0]}'s Commands and Help", icon_url=self.bot.user.display_avatar.url)
-        embed.set_footer(text=f"React for more category help! :: {ctx.message.guild}'s prefix currently is {currentPrefix}",
+        embed.set_footer(text=f"Navigate below for more category help! :: {ctx.message.guild}'s prefix currently is {currentPrefix}",
             icon_url=self.bot.user.display_avatar.url)
 
         for cog in reactionsCogs:

@@ -17,10 +17,12 @@ gc = gspread.service_account(filename="token.json", scopes=SCOPES)
 spreadsheet = gc.open_by_key("1BiJnc8-R7Dy7HWWTGWbZeG7HYD6DNDEAiHij0Gf61Co")
 sht1 = spreadsheet.sheet1
 
+
 def newTopic(name):
     ns = spreadsheet.add_worksheet(title=name, rows="100", cols="20")
     ns.update('A1:F1', headers, major_dimension="columns")
     ns.format('A1:F1', {"textFormat": {"bold": True}})
+
 
 def nextAvailableRow(worksheet):
     str_list = list(worksheet.col_values(1))
@@ -53,8 +55,8 @@ class subjCogs(commands.Cog, name="🔖 Subject Channels"):
         self.bot = bot
 
     @commands.command(brief="Save questions in subject channels. Requires Manage Message.",
-        description=f"save**\n\nSave questions in subject channels. Requires Manage Message.\n\n"
-                    f"Usage:\n`p!save <chapter>\"<question>\" <discussion/answer link> <img if any>`")
+                      description=f"save**\n\nSave questions in subject channels. Requires Manage Message.\n\n"
+                                  f"Usage:\n`p!save <chapter>\"<question>\" <discussion/answer link> <img if any>`")
     @commands.cooldown(1, 5, commands.BucketType.user)
     @has_permissions(manage_messages=True)
     async def save(self, ctx, chapter, qn, ans, img=None):

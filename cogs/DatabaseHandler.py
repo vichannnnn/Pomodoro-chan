@@ -8,10 +8,19 @@ conn.row_factory = sqlite3.Row
 # ---- Voice Rooms
 
 c.execute(
-    '''CREATE TABLE IF NOT EXISTS voiceList (
-    serverID INT, 
-    channelID INT, 
-    UNIQUE(serverID, channelID)
+    '''CREATE TABLE IF NOT EXISTS userProfile (
+    userID INT PRIMARY KEY, 
+    roomName TEXT, 
+    podLimit INT, 
+    currentVoice INT,
+    currentText INT
+    ) ''')
+
+c.execute(
+    '''CREATE TABLE IF NOT EXISTS userWhitelist (
+    userID INT, 
+    whitelistedUser INT, 
+    UNIQUE(userID, whitelistedUser)
     ) ''')
 
 c.execute(
@@ -81,29 +90,11 @@ c.execute(
     'UNIQUE(serverID, userID)'
     ')')
 
-c.execute(
-    '''CREATE TABLE IF NOT EXISTS userProfile (
-    userID INT PRIMARY KEY, 
-    roomName TEXT, 
-    podLimit INT, 
-    currentVoice INT,
-    currentText INT
-    ) ''')
-
-c.execute(
-    '''CREATE TABLE IF NOT EXISTS userWhitelist (
-    userID INT, 
-    whitelistedUser INT, 
-    UNIQUE(userID, whitelistedUser)
-    ) ''')
-
-# ----
-
-
 
 class DatabaseHandler(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+
 
 def setup(bot):
     bot.add_cog(DatabaseHandler(bot))
