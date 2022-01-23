@@ -1,6 +1,5 @@
-authentication.py
 *.db
-cogs/tracker.py
-cogs/filterCogs.py
-cogs/debugCogs.py
+authentication.yml
+cogs/TestingCogs.py
+cogs/FilterCogs.py
 token.json
