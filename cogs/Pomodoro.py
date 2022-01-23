@@ -10,13 +10,13 @@ with open("authentication.yml", "r", encoding="utf8") as stream:
     yaml_data = yaml.safe_load(stream)
 
 def cycleUpdate(user, cycle):
-    Database.execute('UPDATE profile SET cycle = ? WHERE userID = ? ', cycle, user)
+    Database.execute('UPDATE pomodoro SET cycle = ? WHERE userID = ? ', cycle, user)
 
 def nextCycleUpdate(user, cycle):
-    Database.execute('UPDATE profile SET nextCycle = ? WHERE userID = ? ', cycle, user)
+    Database.execute('UPDATE pomodoro SET nextCycle = ? WHERE userID = ? ', cycle, user)
 
 def nextBreakUpdate(user, cycle):
-    Database.execute('UPDATE profile SET nextBreak = ? WHERE userID = ? ', cycle, user)
+    Database.execute('UPDATE pomodoro SET nextBreak = ? WHERE userID = ? ', cycle, user)
 
 class Tomato:
     def __init__(self, user):
