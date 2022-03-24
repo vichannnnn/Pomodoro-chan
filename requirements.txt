@@ -1,0 +1,3 @@
+hikari==2.0.0.dev106
+hikari-lightbulb
+hikari-miru
