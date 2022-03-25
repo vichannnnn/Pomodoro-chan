@@ -46,7 +46,7 @@ class Pages(miru.View):
         self.pages = math.ceil(len(self.data) / n)
 
     async def view_check(self, ctx: miru.Context) -> bool:
-        return ctx.interaction.user == ctx.user
+        return ctx.message.interaction.user == ctx.user
 
     @miru.button(label="Previous", style=hikari.ButtonStyle.PRIMARY, emoji="◀", disabled=True)
     async def previous_button(self, button: miru.Button, ctx: miru.Context) -> None:

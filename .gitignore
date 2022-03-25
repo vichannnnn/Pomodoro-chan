@@ -2,3 +2,4 @@ test_component.py
 extra_component.py
 *.db
 authentication.yaml
+.idea
