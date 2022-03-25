@@ -19,7 +19,8 @@ class Pages(miru.View):
         self.user = user
 
     async def view_check(self, ctx: miru.Context) -> bool:
-        return ctx.interaction.user == ctx.user
+        # user who interacted with button == user who invoked command
+        return ctx.interaction.user.id == self.user.user_id
 
     @miru.button(label="Previous", style=hikari.ButtonStyle.PRIMARY, emoji="◀", disabled=True)
     async def previous_button(self, button: miru.Button, ctx: miru.Context) -> None:
@@ -106,8 +107,6 @@ class Confirm(miru.View):
         super().__init__(timeout=60)
 
     async def view_check(self, ctx: miru.Context) -> bool:
-        print(ctx.interaction.user.id)
-        print(self.user)
         return ctx.interaction.user.id == self.user
 
     async def on_timeout(self) -> None:
