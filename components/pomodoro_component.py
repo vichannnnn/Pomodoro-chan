@@ -17,7 +17,6 @@ plugin = lightbulb.Plugin("🍅 Pomodoro")
 
 
 def dmyConverter(seconds):
-
     """ Function to convert seconds directly into a statement with time left in days, hours, minutes and seconds. """
 
     seconds_in_days = 60 * 60 * 24
@@ -65,7 +64,8 @@ class Profile:
 
     def delete_room(self):
         Database.execute('DELETE FROM studyRoomList WHERE ownerID = ? ', self.user_id)
-        Database.execute('UPDATE userProfile SET currentVoice = ?, currentText = ? WHERE userID = ? ', 0, 0, self.user_id)
+        Database.execute('UPDATE userProfile SET currentVoice = ?, currentText = ? WHERE userID = ? ', 0, 0,
+                         self.user_id)
 
     def get_user_whitelist(self):
         data = [i[0] for i in Database.get('SELECT whitelistedUser FROM userWhitelist WHERE userID = ? ', self.user_id)]
@@ -73,9 +73,11 @@ class Profile:
             self.user_whitelist = data
 
     def get_user_data(self):
-        data = [i for i in Database.get('SELECT * FROM userProfile WHERE userID = ? ', self.user_id)][0]
-        self.user_id, self.room_name, self.pod_limit, self.current_voice, self.current_text, \
-        self.pomodoro_cycle, self.mini_cycle, self.focus_time, self.pomodoro_duration, self.pomodoro_break = data
+        data = [i for i in Database.get('SELECT * FROM userProfile WHERE userID = ? ', self.user_id)]
+
+        if data:
+            self.user_id, self.room_name, self.pod_limit, self.current_voice, self.current_text, \
+            self.pomodoro_cycle, self.mini_cycle, self.focus_time, self.pomodoro_duration, self.pomodoro_break = data[0]
 
     def update_pomodoro_duration(self, minutes: int):
         Database.execute('UPDATE userProfile SET pomodoroDuration = ? WHERE userID = ? ', minutes, self.user_id)
@@ -334,7 +336,6 @@ async def set_pomodoro_break(ctx: lightbulb.Context):
 @lightbulb.command("pomodoro", "Starts a new pomodoro, or cancels if you're halfway through it.")
 @lightbulb.implements(lightbulb.PrefixCommand, lightbulb.SlashCommand)
 async def pomodoro(ctx: lightbulb.Context):
-
     if ctx.channel_id != yaml_data['BotCommands']:
         return await ctx.respond(f"You are not allowed to use this command in this channel. "
                                  f"Pomodoro can only be used in #bot-commands to prevent unnecessary spam!",

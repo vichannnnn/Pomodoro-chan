@@ -17,6 +17,15 @@ plugin = lightbulb.Plugin("📚 Library")
 
 @plugin.listener(hikari.VoiceStateUpdateEvent)
 async def on_voice_state_update(event: hikari.VoiceStateUpdateEvent) -> None:
+
+    if event.state:
+        if event.state.member.is_bot:
+            return
+
+    if event.old_state:
+        if event.old_state.member.is_bot:
+            return
+
     server_room_object = ServerRoom(event.guild_id)
     server_room_object.get_server_channels()
 
@@ -394,12 +403,13 @@ async def setlimit(ctx: lightbulb.Context):
 @lightbulb.implements(lightbulb.PrefixCommand, lightbulb.SlashCommand)
 async def setroomname(ctx: lightbulb.Context):
     name = ctx.options.name
+
     if len(name) > 30:
         await ctx.bot.get_slash_command(ctx.command.name).cooldown_manager.reset_cooldown(ctx)
         return await ctx.respond(f"Please reduce the length of your room name to less than 30 characters.",
                                  flags=hikari.MessageFlag.EPHEMERAL)
 
-    if not re.match("^[a-zA-Z0-9' ]*$", name):
+    if not re.match("^[a-zA-Z0-9' ]*$", name) and ctx.author.id not in yaml_data['Owners']:
         await ctx.bot.get_slash_command(ctx.command.name).cooldown_manager.reset_cooldown(ctx)
         return await ctx.respond(f"Only alphanumeric and `'` symbol are allowed.", flags=hikari.MessageFlag.EPHEMERAL)
 
