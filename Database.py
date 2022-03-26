@@ -83,6 +83,20 @@ c.execute(
     'UNIQUE(serverID, userID)'
     ')')
 
+# ---- Confession
+c.execute(
+    'CREATE TABLE IF NOT EXISTS confessionChannels ('
+    'serverID INT, '
+    'channelID INT, '
+    'UNIQUE(serverID, channelID))'
+    '')
+
+c.execute(
+    'CREATE TABLE IF NOT EXISTS confessions ('
+    'serverID INT, '
+    'userID INT, '
+    'confessionID INT)'
+)
 
 class Database:
     @staticmethod
