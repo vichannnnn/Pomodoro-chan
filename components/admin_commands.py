@@ -202,7 +202,7 @@ async def confession_channel_set_command(ctx: lightbulb.Context):
 
         await ctx.respond(f"Successfully added {channel_object.mention} as a confession channel.\n\n"
                           f"Users will now be able to do anonymous confessions in this channel.\n\n"
-                          f"Moderators will be able to view the discord id of confessor to maximise anonymity\n"
+                          f"Administrators will be able to view the discord id of confessor to maximise anonymity\n"
                           f"and minimise trolls.\n\n"
                           ,
                           flags=hikari.MessageFlag.EPHEMERAL)
