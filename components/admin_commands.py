@@ -3,7 +3,7 @@ import lightbulb
 import random
 from Database import Database
 from components.study_component import focus_role_object, StudySettings, dmyConverter
-from components.room_component import ServerRoom
+from components.class_component import ServerRoom
 from components.display_handler import Confirm
 
 plugin = lightbulb.Plugin("⚙️ Admin Commands")

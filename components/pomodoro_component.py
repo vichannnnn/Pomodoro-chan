@@ -9,6 +9,7 @@ import yaml
 from Database import Database
 from dataclasses import dataclass, field
 from lightbulb.ext import tasks
+from components.class_component import Profile, Tomato
 
 with open("authentication.yaml", "r", encoding="utf8") as stream:
     yaml_data = yaml.safe_load(stream)
@@ -41,104 +42,6 @@ def dmyConverter(seconds):
     if time_statement[-2:] == ", ":
         time_statement = time_statement[:-1]
     return time_statement
-
-
-@dataclass
-class Profile:
-    user_id: int
-    room_name: str = None
-    pod_limit: int = None
-    current_voice: int = None
-    current_text: int = None
-    pomodoro_cycle: int = None
-    mini_cycle: int = None
-    focus_time: int = None
-    pomodoro_duration: int = None
-    pomodoro_break: int = None
-    user_whitelist: List = field(default_factory=list)
-
-    def create_room(self, guild: int, voice: int, text: int):
-        Database.execute('UPDATE userProfile SET currentVoice = ?, currentText = ? WHERE userID = ? ', voice, text,
-                         self.user_id)
-        Database.execute('REPLACE INTO studyRoomList VALUES (?, ?, ?, ?) ', self.user_id, guild, text, voice)
-
-    def delete_room(self):
-        Database.execute('DELETE FROM studyRoomList WHERE ownerID = ? ', self.user_id)
-        Database.execute('UPDATE userProfile SET currentVoice = ?, currentText = ? WHERE userID = ? ', 0, 0,
-                         self.user_id)
-
-    def get_user_whitelist(self):
-        data = [i[0] for i in Database.get('SELECT whitelistedUser FROM userWhitelist WHERE userID = ? ', self.user_id)]
-        if data:
-            self.user_whitelist = data
-
-    def get_user_data(self):
-        data = [i for i in Database.get('SELECT * FROM userProfile WHERE userID = ? ', self.user_id)]
-
-        if data:
-            self.user_id, self.room_name, self.pod_limit, self.current_voice, self.current_text, \
-            self.pomodoro_cycle, self.mini_cycle, self.focus_time, self.pomodoro_duration, self.pomodoro_break = data[0]
-
-    def update_pomodoro_duration(self, minutes: int):
-        Database.execute('UPDATE userProfile SET pomodoroDuration = ? WHERE userID = ? ', minutes, self.user_id)
-        self.pomodoro_duration = minutes
-
-    def update_pomodoro_break(self, minutes: int):
-        Database.execute('UPDATE userProfile SET pomodoroBreak = ? WHERE userID = ? ', minutes, self.user_id)
-        self.pomodoro_break = minutes
-
-    def time_transaction(self, focus_duration: int):
-        self.get_user_data()
-        self.focus_time += focus_duration
-        Database.execute('UPDATE userProfile SET focusTime = ? WHERE userID = ? ', self.focus_time, self.user_id)
-
-
-@dataclass
-class Tomato:
-    user_id: int
-    server_id: int
-    cycle: int = None
-    start_time: int = None
-    next_break: int = None
-    next_cycle: int = None
-
-    def pomodoro_check(self):
-        count = [i[0] for i in
-                 Database.get('SELECT COUNT(*) FROM pomodoro WHERE userID = ? AND serverID = ? ', self.user_id,
-                              self.server_id)][0]
-        return count
-
-    def get_user_data(self):
-        data = [i for i in Database.get('SELECT cycle, startTime, nextBreak, nextCycle '
-                                        'FROM pomodoro WHERE userID = ? AND serverID = ? ', self.user_id,
-                                        self.server_id)]
-
-        if not data:
-            return
-
-        self.cycle, self.start_time, self.next_break, self.next_cycle = data[0]
-
-    def cycle_update(self, cycle):
-        Database.execute('UPDATE pomodoro SET cycle = ? WHERE userID = ? ', cycle, self.user_id)
-
-    def next_cycle_update(self, cycle):
-        Database.execute('UPDATE pomodoro SET nextCycle = ? WHERE userID = ? ', cycle, self.user_id)
-
-    def next_break_update(self, cycle):
-        Database.execute('UPDATE pomodoro SET nextBreak = ? WHERE userID = ? ', cycle, self.user_id)
-
-    def mini_cycle_transaction(self, amount):
-        cycle = [i[0] for i in Database.get('SELECT miniCycle FROM userProfile WHERE userID = ? ', self.user_id)][0]
-        cycle += amount
-        Database.execute('UPDATE userProfile SET miniCycle = ? WHERE userID = ? ', cycle, self.user_id)
-
-    def cycle_transaction(self, amount):
-        cycle = [i[0] for i in Database.get('SELECT pomodoroCycle FROM userProfile WHERE userID = ? ', self.user_id)][0]
-        cycle += amount
-        Database.execute('UPDATE userProfile SET pomodoroCycle = ? WHERE userID = ? ', cycle, self.user_id)
-
-    def pomodoro_delete(self):
-        Database.execute('DELETE FROM pomodoro WHERE userID = ? AND serverID = ?', self.user_id, self.server_id)
 
 
 class View(miru.View):
