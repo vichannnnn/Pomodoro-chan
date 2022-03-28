@@ -26,7 +26,7 @@ class ConfessionSettings:
     def get_confession_channel_list(self):
         data = [i for i in Database.get('SELECT channelID FROM confessionChannels WHERE serverID = ? ', self.guild_id)]
         if data:
-            self.confession_channel_list = data[0]
+            self.confession_channel_list = [tup[0] for tup in data]
             return True
         return False
 
