@@ -10,6 +10,7 @@ with open("authentication.yaml", "r", encoding="utf8") as stream:
 
 plugin = lightbulb.Plugin("Classes")
 
+
 @dataclass
 class ServerRoom:
     guild_id: int
@@ -118,44 +119,44 @@ class Profile:
         print(text_delete)
 
     async def create_study_room(self, event: hikari.VoiceStateUpdateEvent, server_room_object: ServerRoom):
+        text_overwrite = [hikari.PermissionOverwrite(type=hikari.PermissionOverwriteType.ROLE,
+                                                     id=event.guild_id,
+                                                     deny=hikari.Permissions.VIEW_CHANNEL
+                                                     ),
+                          hikari.PermissionOverwrite(type=hikari.PermissionOverwriteType.ROLE,
+                                                     id=yaml_data['Muted'],
+                                                     deny=hikari.Permissions.SEND_MESSAGES
+                                                     )]
+        self.user_whitelist.append(event.state.member.id)
+        guild_object = await event.app.rest.fetch_guild(event.guild_id)
+        guild_members = guild_object.get_members()
+        text_overwrite += [hikari.PermissionOverwrite(type=hikari.PermissionOverwriteType.MEMBER,
+                                                      id=member,
+                                                      allow=hikari.Permissions.VIEW_CHANNEL) for member in
+                           self.user_whitelist]
+        voice_overwrite = [hikari.PermissionOverwrite(type=hikari.PermissionOverwriteType.ROLE,
+                                                      id=yaml_data['Muted'],
+                                                      deny=hikari.Permissions.SPEAK
+                                                      )]
+        voice_overwrite += [hikari.PermissionOverwrite(type=hikari.PermissionOverwriteType.MEMBER,
+                                                       id=member,
+                                                       allow=hikari.Permissions.CONNECT | hikari.Permissions.MOVE_MEMBERS)
+                            for member in
+                            self.user_whitelist if member in guild_members]
+
         voice_channel = await event.app.rest.create_guild_voice_channel(guild=event.guild_id,
                                                                         name=f"{self.room_name}",
                                                                         category=server_room_object.category,
-                                                                        user_limit=self.pod_limit)
+                                                                        user_limit=self.pod_limit,
+                                                                        permission_overwrites=voice_overwrite)
         text_channel = await event.app.rest.create_guild_text_channel(guild=event.guild_id,
                                                                       name=f"{self.room_name}",
-                                                                      category=server_room_object.category)
+                                                                      category=server_room_object.category,
+                                                                      permission_overwrites=text_overwrite)
 
         ''' Disallow Muted users from bypassing the mute & voice restriction in the server even if they're whitelisted.
             The role ID is hardcoded and in authentication.yaml '''
-        await event.app.rest.edit_permission_overwrites(text_channel.id,
-                                                        yaml_data['Muted'],
-                                                        target_type=hikari.channels.PermissionOverwriteType.ROLE,
-                                                        deny=hikari.Permissions.SEND_MESSAGES)
-        await event.app.rest.edit_permission_overwrites(text_channel.id,
-                                                        event.guild_id,
-                                                        target_type=hikari.channels.PermissionOverwriteType.ROLE,
-                                                        deny=hikari.Permissions.VIEW_CHANNEL)
-        await event.app.rest.edit_permission_overwrites(voice_channel.id,
-                                                        yaml_data['Muted'],
-                                                        target_type=hikari.channels.PermissionOverwriteType.ROLE,
-                                                        deny=hikari.Permissions.SPEAK)
 
-        self.user_whitelist.append(event.state.member.id)
-        for member in self.user_whitelist:
-            try:
-                await event.app.rest.edit_permission_overwrites(text_channel.id,
-                                                                member,
-                                                                target_type=hikari.channels.PermissionOverwriteType.MEMBER,
-                                                                allow=hikari.Permissions.VIEW_CHANNEL)
-                await event.app.rest.edit_permission_overwrites(voice_channel.id,
-                                                                member,
-                                                                target_type=hikari.channels.PermissionOverwriteType.MEMBER,
-                                                                allow=(
-                                                                        hikari.Permissions.CONNECT | hikari.Permissions.MOVE_MEMBERS))
-
-            except hikari.errors.NotFoundError:
-                print(f"{member} left the guild and will not be included in the whitelist creation.")
         self.create_room(event.state.guild_id, voice_channel.id, text_channel.id)
 
         try:
