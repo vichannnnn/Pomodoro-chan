@@ -3,6 +3,7 @@ import lightbulb
 import random
 from Database import Database
 from components.study_component import focus_role_object, StudySettings, dmyConverter
+from components.confession_component import ConfessionSettings
 from components.class_component import ServerRoom
 from components.display_handler import Confirm
 
@@ -181,6 +182,64 @@ async def focus_channel_set_command(ctx: lightbulb.Context):
             await ctx.respond(f"Successfully removed {channel_object.mention} as a focus blacklist channel.\n\n"
                               f"Users who are in focused mode will be able to access this channel now.",
                               flags=hikari.MessageFlag.EPHEMERAL)
+
+
+@plugin.command()
+@lightbulb.option("channel", "The channel to blacklist/whitelist.", type=hikari.TextableChannel,
+                  channel_types=[hikari.ChannelType.GUILD_TEXT])
+@lightbulb.command("confessionchannel", "Toggles a channel's ability to accept confessions. Administrator Only.")
+@lightbulb.implements(lightbulb.PrefixCommand, lightbulb.SlashCommand)
+async def confession_channel_set_command(ctx: lightbulb.Context):
+    guild_object = ctx.get_guild()
+    confession_server_object = ConfessionSettings(guild_object)
+    confession_server_object.get_confession_channel_list()
+    channel_object = ctx.get_guild().get_channel(ctx.options.channel)
+
+    if ctx.options.channel.id not in confession_server_object.confession_channel_list:
+        Database.execute('INSERT INTO confessionChannels VALUES (?, ?)', ctx.guild_id, ctx.options.channel.id)
+
+        ''' When a confession channel is added. '''
+
+        await ctx.respond(f"Successfully added {channel_object.mention} as a confession channel.\n\n"
+                          f"Users will now be able to do anonymous confessions in this channel.\n\n"
+                          f"Administrators will be able to view the discord id of confessor to maximise anonymity\n"
+                          f"and minimise trolls.\n\n"
+                          ,
+                          flags=hikari.MessageFlag.EPHEMERAL)
+
+    else:
+        Database.execute('DELETE FROM confessionChannels WHERE channelID = ?', ctx.options.channel.id)
+        await ctx.respond(f"Successfully removed {channel_object.mention} as a confession channel.\n\n"
+                          f"Users will no longer be able to do anonymous confessions in this channel.",
+                          flags=hikari.MessageFlag.EPHEMERAL)
+
+@plugin.command()
+@lightbulb.option("confession_id", "The id of the confession you want to check.", type=int)
+@lightbulb.command("getconfessor", "Retrieves discord id of the confessor. Administrator Only.")
+@lightbulb.implements(lightbulb.PrefixCommand, lightbulb.SlashCommand)
+async def get_confessor(ctx: lightbulb.Context):
+    guild_object = ctx.get_guild()
+    confession_id = ctx.options.confession_id
+
+    confession_server_object = ConfessionSettings(guild_object)
+    confession_server_object.get_confession_channel_list()
+    channel_object = ctx.get_guild().get_channel(ctx.options.channel)
+
+    if channel_object.id not in confession_server_object.confession_channel_list:
+        await ctx.respond(f"{channel_object.mention} has not been configured to take confessions.\n"
+                          f"Use this command in a confession channel.\n"
+                          f"(displayed id will be visible to you only)"
+                          ,
+                          flags=hikari.MessageFlag.EPHEMERAL)
+
+    else:
+
+        confessor_id = Database.get('SELECT userID FROM confessions WHERE serverID = ? AND confessionID = ?',
+                                        ctx.guild_id,
+                                        confession_id)[0][0]
+
+        await ctx.respond(f"Confession #{confession_id} made by user <@{confessor_id}> `id: {confessor_id}`",
+                          flags=hikari.MessageFlag.EPHEMERAL)
 
 
 def load(bot):
