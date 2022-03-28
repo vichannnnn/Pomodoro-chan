@@ -193,7 +193,7 @@ async def confession_channel_set_command(ctx: lightbulb.Context):
     guild_object = ctx.get_guild()
     confession_server_object = ConfessionSettings(guild_object)
     confession_server_object.get_confession_channel_list()
-    channel_object = ctx.get_guild().get_channel(ctx.options.channel)
+    channel_object = guild_object.get_channel(ctx.options.channel)
 
     if ctx.options.channel.id not in confession_server_object.confession_channel_list:
         Database.execute('INSERT INTO confessionChannels VALUES (?, ?)', ctx.guild_id, ctx.options.channel.id)
@@ -213,6 +213,7 @@ async def confession_channel_set_command(ctx: lightbulb.Context):
                           f"Users will no longer be able to do anonymous confessions in this channel.",
                           flags=hikari.MessageFlag.EPHEMERAL)
 
+
 @plugin.command()
 @lightbulb.option("confession_id", "The id of the confession you want to check.", type=int)
 @lightbulb.command("getconfessor", "Retrieves discord id of the confessor. Administrator Only.")
@@ -223,7 +224,7 @@ async def get_confessor(ctx: lightbulb.Context):
 
     confession_server_object = ConfessionSettings(guild_object)
     confession_server_object.get_confession_channel_list()
-    channel_object = ctx.get_guild().get_channel(ctx.options.channel)
+    channel_object = guild_object.get_channel(ctx.options.channel)
 
     if channel_object.id not in confession_server_object.confession_channel_list:
         await ctx.respond(f"{channel_object.mention} has not been configured to take confessions.\n"
@@ -235,8 +236,8 @@ async def get_confessor(ctx: lightbulb.Context):
     else:
 
         confessor_id = Database.get('SELECT userID FROM confessions WHERE serverID = ? AND confessionID = ?',
-                                        ctx.guild_id,
-                                        confession_id)[0][0]
+                                    ctx.guild_id,
+                                    confession_id)[0][0]
 
         await ctx.respond(f"Confession #{confession_id} made by user <@{confessor_id}> `id: {confessor_id}`",
                           flags=hikari.MessageFlag.EPHEMERAL)
