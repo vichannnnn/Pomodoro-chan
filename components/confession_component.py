@@ -24,19 +24,30 @@ class ConfessionSettings:
         self.guild_id = guild.id
 
     def get_confession_channel_list(self):
-        data = [i for i in Database.get('SELECT channelID FROM confessionChannels WHERE serverID = ? ', self.guild_id)]
+        data = [i[0] for i in
+                Database.get('SELECT channelID FROM confessionChannels WHERE serverID = ? ', self.guild_id)]
         if data:
-            self.confession_channel_list = data[0]
+            self.confession_channel_list = data
             return True
         return False
 
     def get_max_confession_id(self):
-
         max_id = Database.get('SELECT MAX(confessionID) FROM confessions WHERE serverID = ? ', self.guild_id)[0][0]
         return max_id if max_id else 0
 
-    def upload_confession(self, confessor_id, confession_id):
+    def upload_confession(self, confessor_id: int, confession_id: int):
         Database.execute('INSERT INTO confessions VALUES (?, ?, ?)', self.guild_id, confessor_id, confession_id)
+
+    def get_confessor(self, confession_id: int):
+        confessor_id = [i[0] for i in
+                        Database.get('SELECT userID FROM confessions WHERE serverID = ? AND confessionID = ?',
+                                     self.guild_id, confession_id)]
+
+        if confessor_id:
+            confessor_id = confessor_id[0]
+        else:
+            confessor_id = None
+        return confessor_id
 
 
 @plugin.command()
@@ -58,8 +69,10 @@ async def confess(ctx: lightbulb.Context):
 
         await ctx.respond(f"You are not allowed to perform this action in {channel_object.mention}.",
                           flags=hikari.MessageFlag.EPHEMERAL)
+        await ctx.bot.get_slash_command(ctx.command.name).cooldown_manager.reset_cooldown(ctx)
+
     else:
-        confession_id = confession_server_object.get_max_confession_id()+1
+        confession_id = confession_server_object.get_max_confession_id() + 1
         embed = hikari.Embed(title=f"Anonymous confession #{confession_id}",
                              description=confession,
                              colour=random.choice(
@@ -78,9 +91,6 @@ async def confess(ctx: lightbulb.Context):
         await ctx.respond("Your confession has been submitted",
                           flags=hikari.MessageFlag.EPHEMERAL)
         await channel_object.send(embed=embed)
-
-
-
 
 
 def load(bot):

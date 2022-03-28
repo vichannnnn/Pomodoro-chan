@@ -23,7 +23,7 @@ async def on_error(event: lightbulb.CommandErrorEvent) -> None:
     if isinstance(event.exception, lightbulb.CommandInvocationError):
         await event.context.respond(
             f"Oh no! Something went wrong during invocation of command `{event.context.command.name}`.",
-            delete_after=10)
+            delete_after=10, flags=hikari.MessageFlag.EPHEMERAL)
         raise event.exception
 
     # Unwrap the exception to get the original cause
@@ -31,15 +31,15 @@ async def on_error(event: lightbulb.CommandErrorEvent) -> None:
 
     if isinstance(exception, lightbulb.NotOwner):
         await event.context.respond(f"{event.context.author.mention}, You are not the owner of this bot.",
-                                    delete_after=10, user_mentions=True)
+                                    delete_after=10, user_mentions=True, flags=hikari.MessageFlag.EPHEMERAL)
     elif isinstance(exception, lightbulb.CommandIsOnCooldown):
         await event.context.respond(f"{event.context.author.mention}, "
                                     f"This command is on cooldown. Retry in {dmyConverter(exception.retry_after)}.",
-                                    delete_after=10, user_mentions=True)
+                                    delete_after=10, user_mentions=True, flags=hikari.MessageFlag.EPHEMERAL)
     elif isinstance(exception, lightbulb.MissingRequiredPermission):
         await event.context.respond(
             f"{event.context.author.mention}, You do not have the permission to run this command.", delete_after=10,
-            user_mentions=True)
+            user_mentions=True, flags=hikari.MessageFlag.EPHEMERAL)
     else:
         raise exception
 
@@ -223,24 +223,14 @@ async def get_confessor(ctx: lightbulb.Context):
     confession_id = ctx.options.confession_id
 
     confession_server_object = ConfessionSettings(guild_object)
-    confession_server_object.get_confession_channel_list()
-    channel_object = guild_object.get_channel(ctx.options.channel)
+    target_id = confession_server_object.get_confessor(confession_id)
 
-    if channel_object.id not in confession_server_object.confession_channel_list:
-        await ctx.respond(f"{channel_object.mention} has not been configured to take confessions.\n"
-                          f"Use this command in a confession channel.\n"
-                          f"(displayed id will be visible to you only)"
-                          ,
+    if target_id:
+        await ctx.respond(f"Confession #{confession_id} made by user <@{target_id}> `id: {target_id}`",
                           flags=hikari.MessageFlag.EPHEMERAL)
 
     else:
-
-        confessor_id = Database.get('SELECT userID FROM confessions WHERE serverID = ? AND confessionID = ?',
-                                    ctx.guild_id,
-                                    confession_id)[0][0]
-
-        await ctx.respond(f"Confession #{confession_id} made by user <@{confessor_id}> `id: {confessor_id}`",
-                          flags=hikari.MessageFlag.EPHEMERAL)
+        await ctx.respond("Confession ID does not exist.", flags=hikari.MessageFlag.EPHEMERAL)
 
 
 def load(bot):
