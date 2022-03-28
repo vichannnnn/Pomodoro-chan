@@ -11,7 +11,7 @@ async def status_loop(self):
     guilds = self.rest.fetch_my_guilds()
     await self.update_presence(
         activity=hikari.Activity(
-            name=f"in {await guilds.count()} servers | /help",
+            name=f"skull | /help",
             type=hikari.ActivityType.WATCHING,
         )
     )

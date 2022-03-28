@@ -6,7 +6,8 @@ import hikari
 import lightbulb
 import miru
 from Database import Database
-from components.pomodoro_component import dmyConverter, Profile
+from components.pomodoro_component import dmyConverter
+from components.room_component import Profile
 
 plugin = lightbulb.Plugin("📊 Focus & Statistics")
 

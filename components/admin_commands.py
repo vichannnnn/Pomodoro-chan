@@ -4,7 +4,7 @@ import random
 from Database import Database
 from components.study_component import focus_role_object, StudySettings, dmyConverter
 from components.confession_component import ConfessionSettings
-from components.room_component import ServerRoom
+from components.class_component import ServerRoom
 from components.display_handler import Confirm
 
 plugin = lightbulb.Plugin("⚙️ Admin Commands")
@@ -193,7 +193,7 @@ async def confession_channel_set_command(ctx: lightbulb.Context):
     guild_object = ctx.get_guild()
     confession_server_object = ConfessionSettings(guild_object)
     confession_server_object.get_confession_channel_list()
-    channel_object = ctx.get_channel()
+    channel_object = ctx.get_guild().get_channel(ctx.options.channel)
 
     if ctx.options.channel.id not in confession_server_object.confession_channel_list:
         Database.execute('INSERT INTO confessionChannels VALUES (?, ?)', ctx.guild_id, ctx.options.channel.id)
@@ -209,7 +209,6 @@ async def confession_channel_set_command(ctx: lightbulb.Context):
 
     else:
         Database.execute('DELETE FROM confessionChannels WHERE channelID = ?', ctx.options.channel.id)
-
         await ctx.respond(f"Successfully removed {channel_object.mention} as a confession channel.\n\n"
                           f"Users will no longer be able to do anonymous confessions in this channel.",
                           flags=hikari.MessageFlag.EPHEMERAL)
@@ -224,10 +223,9 @@ async def get_confessor(ctx: lightbulb.Context):
 
     confession_server_object = ConfessionSettings(guild_object)
     confession_server_object.get_confession_channel_list()
-    channel_object = ctx.get_channel()
+    channel_object = ctx.get_guild().get_channel(ctx.options.channel)
 
     if channel_object.id not in confession_server_object.confession_channel_list:
-
         await ctx.respond(f"{channel_object.mention} has not been configured to take confessions.\n"
                           f"Use this command in a confession channel.\n"
                           f"(displayed id will be visible to you only)"

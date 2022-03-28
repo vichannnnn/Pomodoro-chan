@@ -2,9 +2,8 @@ import lightbulb
 import miru
 import hikari
 import math
-import random
 import asyncio
-from components.pomodoro_component import Profile
+from components.class_component import Profile
 
 plugin = lightbulb.Plugin("Display Handler")
 
@@ -104,7 +103,7 @@ class Confirm(miru.View):
     def __init__(self, user):
         self.value = None
         self.user: int = user
-        super().__init__(timeout=60)
+        super().__init__(timeout=300)
 
     async def view_check(self, ctx: miru.Context) -> bool:
         return ctx.interaction.user.id == self.user
