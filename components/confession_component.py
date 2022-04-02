@@ -74,7 +74,7 @@ async def confess(ctx: lightbulb.Context):
     else:
         confession_id = confession_server_object.get_max_confession_id() + 1
         embed = hikari.Embed(title=f"Anonymous confession #{confession_id}",
-                             description=confession,
+                             description=confession + "\n\n",
                              colour=random.choice(
                                  [0xFFE4E1, 0x00FF7F, 0xD8BFD8, 0xDC143C, 0xFF4500, 0xDEB887, 0xADFF2F, 0x800000,
                                   0x4682B4, 0x006400, 0x808080, 0xA0522D, 0xF08080, 0xC71585, 0xFFB6C1, 0x00CED1]

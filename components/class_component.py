@@ -96,6 +96,8 @@ class Profile:
         if data:
             self.user_id, self.room_name, self.pod_limit, self.current_voice, self.current_text, \
             self.pomodoro_cycle, self.mini_cycle, self.focus_time, self.pomodoro_duration, self.pomodoro_break = data[0]
+            return True
+        return False
 
     def update_pomodoro_duration(self, minutes: int):
         Database.execute('UPDATE userProfile SET pomodoroDuration = ? WHERE userID = ? ', minutes, self.user_id)
