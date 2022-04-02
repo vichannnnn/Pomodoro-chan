@@ -21,10 +21,6 @@ async def on_voice_state_update(event: hikari.VoiceStateUpdateEvent) -> None:
     if not server_room_object.join_channel or not server_room_object.category:  # If the voice system wasn't set-up on the server.
         return
 
-    if event.state:
-        if event.state.member.is_bot:
-            return
-
     if event.old_state:
         if event.old_state.member.is_bot:
             study_room_object = StudyRoom(event.old_state.channel_id)
@@ -35,6 +31,10 @@ async def on_voice_state_update(event: hikari.VoiceStateUpdateEvent) -> None:
                     plugin.bot.cache.get_voice_states_view_for_channel(event.guild_id, event.old_state.channel_id))
                 if not room_members:
                     await study_room_object.room_closure(event)
+            return
+
+    if event.state:
+        if event.state.member.is_bot:
             return
 
     user_profile = Profile(event.state.member.id)
