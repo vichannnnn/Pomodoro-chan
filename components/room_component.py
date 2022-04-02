@@ -21,6 +21,10 @@ async def on_voice_state_update(event: hikari.VoiceStateUpdateEvent) -> None:
     if not server_room_object.join_channel or not server_room_object.category:  # If the voice system wasn't set-up on the server.
         return
 
+    if event.old_state and event.state:
+        if event.old_state.channel_id == event.state.channel_id:
+            return
+
     if event.old_state:
         if event.old_state.member.is_bot:
             study_room_object = StudyRoom(event.old_state.channel_id)
