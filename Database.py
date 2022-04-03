@@ -95,7 +95,8 @@ c.execute(
     'CREATE TABLE IF NOT EXISTS confessions ('
     'serverID INT, '
     'userID INT, '
-    'confessionID INT)'
+    'confessionID INT, '
+    'messageID INT)'
 )
 
 class Database:
