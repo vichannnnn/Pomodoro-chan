@@ -117,8 +117,6 @@ class Profile:
         text_delete = await event.app.rest.delete_channel(self.current_text)
         study_room_object = StudyRoom(self.current_voice)
         study_room_object.delete_room()
-        print(voice_delete)
-        print(text_delete)
 
     async def create_study_room(self, event: hikari.VoiceStateUpdateEvent, server_room_object: ServerRoom):
         text_overwrite = [hikari.PermissionOverwrite(type=hikari.PermissionOverwriteType.ROLE,

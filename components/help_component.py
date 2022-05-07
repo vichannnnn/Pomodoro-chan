@@ -85,7 +85,7 @@ async def help(ctx: lightbulb.Context):
         admin = False
 
     cogs = [ctx.bot.get_plugin(cog) for cog in ctx.bot.plugins if
-            ctx.bot.get_plugin(cog).name != "Help Commands" and ctx.bot.get_plugin(cog).all_commands] if admin else \
+            ctx.bot.get_plugin(cog).name not in ["Help Commands", "Misc"] and ctx.bot.get_plugin(cog).all_commands] if admin else \
         [ctx.bot.get_plugin(cog) for cog in ctx.bot.plugins if
             ctx.bot.get_plugin(cog).name not in ["Help Commands", "⚙️ Admin Commands"] and ctx.bot.get_plugin(cog).all_commands]
 
