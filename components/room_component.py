@@ -12,27 +12,26 @@ with open("authentication.yaml", "r", encoding="utf8") as stream:
 
 plugin = lightbulb.Plugin("📚 Library")
 
+
 @plugin.listener(hikari.VoiceStateUpdateEvent)
 async def on_voice_state_update(event: hikari.VoiceStateUpdateEvent) -> None:
-
     server_room_object = ServerRoom(event.guild_id)
     server_room_object.get_server_channels()
 
     if not server_room_object.join_channel or not server_room_object.category:  # If the voice system wasn't set-up on the server.
         return
 
-    if event.old_state and event.state:
+    if event.old_state and event.state:  # Because voice state update event gets triggered even on deafen and mute state, this code block is necessary.
         if event.old_state.channel_id == event.state.channel_id:
             return
 
     if event.old_state:
-        if event.old_state.member.is_bot:
+        if event.old_state.member.is_bot:  # Edge case fix for when bot is the last member in the channel and leaves the channel.
             study_room_object = StudyRoom(event.old_state.channel_id)
             study_room_object.get_data()
 
             if study_room_object.owner_id:
-                room_members = len(
-                    plugin.bot.cache.get_voice_states_view_for_channel(event.guild_id, event.old_state.channel_id))
+                room_members = len(plugin.bot.cache.get_voice_states_view_for_channel(event.guild_id, event.old_state.channel_id))
                 if not room_members:
                     await study_room_object.room_closure(event)
             return
@@ -52,6 +51,10 @@ async def on_voice_state_update(event: hikari.VoiceStateUpdateEvent) -> None:
                     with themselves and all other whitelisted members given access to bypass limit and partake in text channel chat.
                     Move the said creator into their respective voice room as well. '''
                 await user_profile.create_study_room(event, server_room_object)
+
+            else:
+                ''' If they joined the 'Join Here' Channel from another room, expel them to prevent buggy interaction. '''
+                return await event.state.member.edit(voice_channel=None)
 
         else:
             server_room_object.get_all_room_data()
